@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: wuhan-road-monitor
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python server_prod.py
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: 10000
+      # DEEPSEEK_API_KEY 在 Render Dashboard 中设置环境变量，不要硬编码
