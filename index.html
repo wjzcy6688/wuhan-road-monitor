@@ -1,0 +1,2235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>武汉市道路病害智能监测平台</title>
+<script src="https://modao.cc/agent-py/static/source/js/tailwindcss.js"></script>
+<script src="https://modao.cc/agent-py/static/source/js/iconify-icon.min.js"></script>
+<script src="https://modao.cc/agent-py/static/source/js/echarts.min.js"></script>
+<script src="vendor/mammoth.browser.min.js?v=1" onerror="console.error('mammoth 加载失败');document.mammothLoadFailed=true"></script>
+<script>
+// 确保 mammoth 全局可用; 若加载失败(缓存/网络), 在页面上给出醒目提示
+if (typeof mammoth === 'undefined' && !document.mammothLoadFailed) {
+  document.addEventListener('DOMContentLoaded', function() {
+    var el = document.getElementById('report-auto-note');
+    if (!el) { el = document.createElement('div'); el.id='mammoth-warn'; el.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9999;background:#fef2f2;border-bottom:2px solid #ef4444;padding:8px 16px;font-size:13px;color:#991b1b;text-align:center'; document.body.appendChild(el); }
+    el.className = ''; if (el.classList) el.classList.remove('hidden');
+    el.innerHTML = '⚠️ <b>Word 文档解析库未加载</b> — 请按 <b>Ctrl+Shift+R</b>(Mac: ⌘+Shift+R) 强制刷新页面重试，或改传 .txt/.csv/.json 格式报告。';
+  });
+}
+</script>
+<script src="https://api.map.baidu.com/api?v=3.0&ak=aOpKtmlUJ5FuAUv4BZ0Su8eYkvLJcS5m"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f4f7f9; }
+.bg-gov-dark { background-color: #1a3a5c; }
+.text-gov-primary { color: #1a3a5c; }
+.border-gov-primary { border-color: #1a3a5c; }
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 2px; }
+.tab-active { border-bottom: 3px solid #1a3a5c; color: #1a3a5c; font-weight: 600; }
+#map-container { width: 100%; height: 100%; }
+.anchorBL { display:none !important; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.55); display: flex; align-items: center; justify-content: center; z-index: 50; backdrop-filter: blur(2px); }
+.modal-overlay.hidden { display: none; }
+.form-input { width: 100%; border: 1px solid #cbd5e0; border-radius: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.875rem; outline: none; transition: border-color .15s, box-shadow .15s; }
+.form-input:focus { border-color: #1a3a5c; box-shadow: 0 0 0 3px rgba(26,58,92,0.12); }
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+</style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+<header class="h-16 bg-gov-dark flex items-center justify-between px-6 text-white shrink-0 z-20 shadow-lg">
+<div class="flex items-center space-x-3">
+<div class="bg-white p-1 rounded-full">
+<iconify-icon class="text-gov-dark text-2xl" icon="mdi:road-variant"></iconify-icon>
+</div>
+<h1 class="text-xl font-bold tracking-wider">武汉市道路病害智能监测平台</h1>
+</div>
+<div class="flex items-center space-x-6">
+<div class="flex items-center space-x-2 bg-blue-900/40 px-3 py-1 rounded-full text-sm">
+<span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span><span>系统运行正常</span>
+</div>
+<div class="flex items-center space-x-3 border-l border-white/20 pl-6">
+<div class="text-right"><p class="text-sm font-semibold">管理员</p><p class="text-xs text-white/70">武汉市交通运输局</p></div>
+<div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center border border-white/30">
+<iconify-icon class="text-2xl" icon="mdi:account"></iconify-icon>
+</div>
+</div>
+</div>
+</header>
+<div class="flex flex-1 overflow-hidden">
+<aside class="w-64 bg-slate-800 text-slate-300 flex flex-col shrink-0">
+<nav class="flex-1 py-4 overflow-y-auto custom-scrollbar">
+<div class="px-4 mb-2 text-xs font-bold text-slate-500 uppercase tracking-widest">核心业务</div>
+<a class="flex items-center space-x-3 px-6 py-3 bg-gov-dark text-white border-r-4 border-blue-400" href="#">
+<iconify-icon class="text-xl" icon="mdi:view-dashboard"></iconify-icon><span>道路总览</span>
+</a>
+<a class="flex items-center space-x-3 px-6 py-3 hover:bg-slate-700 transition-colors" href="#">
+<iconify-icon class="text-xl" icon="mdi:chart-areaspline"></iconify-icon><span>病害分析</span>
+</a>
+<a class="flex items-center space-x-3 px-6 py-3 hover:bg-slate-700 transition-colors" href="#">
+<iconify-icon class="text-xl" icon="mdi:hammer-wrench"></iconify-icon><span>维修方案</span>
+</a>
+<a class="flex items-center space-x-3 px-6 py-3 hover:bg-slate-700 transition-colors" href="#">
+<iconify-icon class="text-xl" icon="mdi:history"></iconify-icon><span>历史记录</span>
+</a>
+<div class="px-4 mt-6 mb-2 flex items-center justify-between">
+<div class="text-xs font-bold text-slate-500 uppercase tracking-widest">道路名录</div>
+<button onclick="startAddRoad()" class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg flex items-center space-x-1 transition-colors"><iconify-icon icon="mdi:plus" class="text-base"></iconify-icon><span>新增</span></button></div>
+<div class="space-y-1 px-2" id="road-list"></div>
+</nav>
+<div class="p-4 bg-slate-900/50 text-xs flex justify-between items-center"><span>版本 v2.4.0</span><iconify-icon class="cursor-pointer hover:text-white" icon="mdi:cog"></iconify-icon></div>
+</aside>
+<main class="flex-1 flex flex-col overflow-hidden">
+<section class="relative bg-slate-100 border-b border-slate-300 overflow-hidden transition-all duration-300" id="map-section" style="height:55%">
+<div id="map-container"></div>
+<div id="pick-banner" class="hidden absolute top-4 left-1/2 -translate-x-1/2 z-30 bg-gov-dark text-white text-sm px-4 py-2 rounded-lg shadow-lg flex items-center space-x-2">
+  <iconify-icon icon="mdi:map-marker" class="text-yellow-400 text-lg"></iconify-icon>
+  <span id="pick-text">地图拾取模式</span>
+  <button onclick="undoPick()" class="px-2 py-1 bg-amber-600 hover:bg-amber-500 rounded text-xs transition-colors">撤销末点</button>
+  <button onclick="clearPick()" class="px-2 py-1 bg-slate-600 hover:bg-slate-500 rounded text-xs transition-colors">清空</button>
+  <button onclick="finishPick()" class="px-2 py-1 bg-green-600 hover:bg-green-500 rounded text-xs transition-colors">完成</button>
+  <button onclick="cancelPick()" class="px-2 py-1 bg-slate-600 hover:bg-slate-500 rounded text-xs transition-colors">取消</button>
+</div>
+<div class="absolute top-4 left-4 z-10 space-y-2">
+<div class="bg-white/90 backdrop-blur shadow-md rounded-lg p-2 flex flex-col space-y-2">
+<button class="p-2 hover:bg-slate-100 rounded text-gov-dark" onclick="map.zoomIn()" title="放大"><iconify-icon icon="mdi:plus"></iconify-icon></button>
+<button class="p-2 hover:bg-slate-100 rounded text-gov-dark" onclick="map.zoomOut()" title="缩小"><iconify-icon icon="mdi:minus"></iconify-icon></button>
+<button class="p-2 hover:bg-slate-100 rounded text-gov-dark" onclick="(function(){const c=wgs84ToBd09(30.52,114.37);map.centerAndZoom(new BMap.Point(c.lng,c.lat),13)})()" title="复位"><iconify-icon icon="mdi:crosshairs-gps"></iconify-icon></button>
+<button class="p-2 hover:bg-slate-100 rounded text-gov-dark" onclick="toggleMilestones()" id="mile-btn" title="桩号显示/隐藏"><iconify-icon icon="mdi:sign-direction"></iconify-icon></button>
+</div>
+</div>
+<div class="absolute bottom-4 left-4 z-10 bg-white/90 backdrop-blur shadow-md rounded-lg p-3 text-xs">
+<p class="font-bold mb-2 border-b pb-1">病害指数 (PCI)</p>
+<div class="space-y-1">
+<div class="flex items-center space-x-2"><span class="w-3 h-3" style="background:#22c55e;border-radius:2px;"></span><span>健康 (90-100)</span></div>
+<div class="flex items-center space-x-2"><span class="w-3 h-3" style="background:#eab308;border-radius:2px;"></span><span>轻微 (75-89)</span></div>
+<div class="flex items-center space-x-2"><span class="w-3 h-3" style="background:#f97316;border-radius:2px;"></span><span>中度 (60-74)</span></div>
+<div class="flex items-center space-x-2"><span class="w-3 h-3" style="background:#ef4444;border-radius:2px;"></span><span>严重 (&lt;60)</span></div>
+</div>
+</div>
+</section>
+<section class="bg-white flex flex-col shadow-[0_-4px_10px_rgba(0,0,0,0.05)] z-10 transition-all duration-300 relative" id="bottom-panel" style="height:45%">
+<div class="absolute -top-5 left-1/2 -translate-x-1/2 z-20 cursor-pointer bg-white border border-slate-300 rounded-full w-10 h-10 flex items-center justify-center shadow-md hover:bg-slate-50 transition-colors" onclick="togglePanel()" id="panel-toggle" title="切换面板">
+<iconify-icon icon="mdi:chevron-down" class="text-slate-500 text-xl transition-transform duration-300" id="panel-toggle-icon"></iconify-icon>
+</div>
+<div class="px-6 py-3 border-b flex items-center justify-between shrink-0">
+<div class="flex items-center space-x-4">
+<h2 class="text-xl font-bold text-gov-dark" id="current-road-title">珞喻路</h2>
+<span class="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full font-medium" id="road-id-tag">ID: WH-RD-001</span>
+<button type="button" onclick="editCurrentRoad()" class="ml-1 text-xs bg-blue-600 text-white px-2.5 py-1 rounded hover:bg-blue-700 flex items-center"><iconify-icon icon="mdi:pencil" class="mr-1"></iconify-icon>修改</button>
+<button type="button" onclick="resetCurrentRoad()" class="text-xs bg-slate-500 text-white px-2.5 py-1 rounded hover:bg-slate-600 flex items-center"><iconify-icon icon="mdi:restore" class="mr-1"></iconify-icon>重置</button>
+</div>
+<div class="flex space-x-1 bg-slate-100 p-1 rounded-lg">
+<button class="px-4 py-1.5 text-sm rounded-md transition-all tab-active" id="tab-btn-1" onclick="switchTab(1)">病害类型与比例</button>
+<button class="px-4 py-1.5 text-sm rounded-md transition-all text-slate-500 hover:text-gov-dark" id="tab-btn-2" onclick="switchTab(2)">AI 推测原因分析</button>
+<button class="px-4 py-1.5 text-sm rounded-md transition-all text-slate-500 hover:text-gov-dark" id="tab-btn-3" onclick="switchTab(3)">最小交通影响维修方案</button>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto custom-scrollbar p-6">
+<div class="h-full flex space-x-6" id="tab-content-1">
+<div class="w-1/3 h-full bg-slate-50 rounded-xl border border-slate-200 p-4 relative">
+<div class="absolute top-4 left-4 text-sm font-bold text-slate-600 flex items-center">
+<iconify-icon class="mr-1" icon="mdi:chart-pie"></iconify-icon> 病害构成分布
+</div>
+<div class="w-full h-full" id="disease-pie-chart"></div>
+</div>
+<div class="w-2/3 flex flex-col space-y-4">
+<div class="grid grid-cols-4 gap-4" id="disease-cards"></div>
+<div class="flex-1 bg-gov-dark/5 rounded-xl border border-gov-dark/10 p-4 flex items-center justify-around">
+<div class="text-center"><p class="text-slate-500 text-sm mb-1">健康评分 (PCI)</p><p class="text-4xl font-bold text-gov-dark" id="stat-pci">92</p></div>
+<div class="w-px h-12 bg-slate-300"></div>
+<div class="text-center"><p class="text-slate-500 text-sm mb-1">风险等级</p><p class="text-lg font-bold px-4 py-1 rounded-full" id="stat-risk">低风险</p></div>
+<div class="w-px h-12 bg-slate-300"></div>
+<div class="text-center"><p class="text-slate-500 text-sm mb-1">待修复面积</p><p class="text-xl font-bold text-gov-dark"><span id="stat-area">124</span> m²</p></div>
+<div class="w-px h-12 bg-slate-300"></div>
+<div class="text-center"><p class="text-slate-500 text-sm mb-1">道路长度</p><p class="text-xl font-bold text-gov-dark"><span id="stat-length">—</span> m</p></div>
+<div class="w-px h-12 bg-slate-300"></div>
+<button onclick="showInspectionReport()" class="bg-gov-dark text-white px-6 py-2 rounded-lg hover:bg-blue-900 transition-colors flex items-center space-x-2">
+<iconify-icon icon="mdi:file-document-edit"></iconify-icon><span>生成巡检报告</span>
+</button>
+<button onclick="syncFromServer()" id="sync-btn" title="从服务器同步最新数据（查看他人修改）" class="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition-colors flex items-center space-x-2">
+<iconify-icon icon="mdi:cloud-refresh" class="text-base"></iconify-icon><span>同步</span>
+</button>
+</div>
+</div>
+</div>
+<div class="hidden h-full flex flex-col space-y-6 overflow-y-auto custom-scrollbar" id="tab-content-2">
+<div class="flex items-center justify-between">
+<div class="flex items-center space-x-2 text-blue-700 bg-blue-50 px-4 py-2 rounded-lg border border-blue-100">
+<iconify-icon class="text-xl" icon="mdi:robot"></iconify-icon>
+<span class="font-bold">AI 智能诊断引擎 · 道路病害成因推测</span>
+</div>
+<button id="deepseek-btn" onclick="runDeepSeek()" class="flex items-center space-x-2 bg-gov-dark text-white px-4 py-2 rounded-lg hover:bg-blue-900 transition-colors text-sm shrink-0">
+<iconify-icon icon="mdi:brain" class="text-lg"></iconify-icon><span id="deepseek-btn-text">DeepSeek 深度诊断</span>
+</button>
+</div>
+<div id="deepseek-via" class="hidden text-[11px] text-slate-400"></div>
+<div class="grid grid-cols-2 gap-6" id="ai-analysis-container"></div>
+<div id="ai-conclusion" class="bg-gov-dark/5 border border-gov-dark/10 rounded-xl p-4 hidden">
+<h4 class="font-bold text-gov-dark mb-2 flex items-center"><iconify-icon class="mr-2" icon="mdi:clipboard-text"></iconify-icon> 综合诊断结论</h4>
+<p id="ai-conclusion-text" class="text-sm text-slate-700 leading-relaxed"></p>
+</div>
+<div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+<h4 class="font-bold text-gov-dark mb-3 flex items-center"><iconify-icon class="mr-2" icon="mdi:magnify-plus"></iconify-icon> 建议进一步检测项目</h4>
+<div class="flex flex-wrap gap-3" id="suggested-tests"></div>
+</div>
+</div>
+<div class="hidden h-full flex space-x-6" id="tab-content-3">
+<div class="w-1/2 flex flex-col space-y-4"><div class="space-y-4" id="maintenance-plan-list"></div></div>
+<div class="w-1/2 bg-slate-900 rounded-xl p-4 relative overflow-hidden flex flex-col">
+<div class="text-white font-bold mb-4 flex items-center justify-between">
+<span class="flex items-center"><iconify-icon class="mr-2 text-yellow-400" icon="mdi:map-marker-path"></iconify-icon> 临时交通疏解示意图</span>
+<span class="text-xs bg-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded border border-yellow-500/30">实时模拟</span>
+</div>
+<div class="flex-1 bg-slate-800 rounded-lg border border-slate-700 relative overflow-hidden flex items-center justify-center">
+<svg class="w-full h-full" viewBox="0 0 400 200">
+<rect fill="#334155" height="60" width="400" x="0" y="70"></rect>
+<line stroke="#94a3b8" stroke-dasharray="10,10" x1="0" x2="400" y1="100" y2="100"></line>
+<rect fill="#ef4444" fill-opacity="0.3" height="20" stroke="#ef4444" stroke-width="1" width="100" x="150" y="75"></rect>
+<path d="M150,75 L250,95 M150,95 L250,75" stroke="#ef4444" stroke-width="0.5"></path>
+<path d="M50,115 Q100,115 130,95 T180,95" fill="none" marker-end="url(#arrow)" stroke="#22c55e" stroke-width="2"></path>
+<circle cx="140" cy="75" fill="#f59e0b" r="3"></circle>
+<circle cx="260" cy="75" fill="#f59e0b" r="3"></circle>
+<text fill="#94a3b8" font-size="8" x="10" y="85">西行线</text>
+<text fill="#94a3b8" font-size="8" x="10" y="125">东行线</text>
+<text fill="#ef4444" font-size="8" font-weight="bold" x="175" y="90">施工区域</text>
+<defs><marker id="arrow" markerHeight="4" markerWidth="4" orient="auto-start-reverse" refX="5" refY="5" viewBox="0 0 10 10"><path d="M 0 0 L 10 5 L 0 10 z" fill="#22c55e"></path></marker></defs>
+</svg>
+<div class="absolute bottom-2 right-2 flex space-x-2">
+<div class="flex items-center space-x-1 text-[10px] text-slate-400"><span class="w-2 h-2 bg-red-500 rounded-full"></span><span>封闭区</span></div>
+<div class="flex items-center space-x-1 text-[10px] text-slate-400"><span class="w-2 h-2 bg-green-500 rounded-full"></span><span>引导路径</span></div>
+</div>
+</div>
+<div class="mt-4 grid grid-cols-2 gap-2">
+<div class="bg-slate-800 p-2 rounded border border-slate-700"><p class="text-slate-500 text-[10px] uppercase">建议施工时段</p><p class="text-white text-sm">22:00 - 次日 06:00</p></div>
+<div class="bg-slate-800 p-2 rounded border border-slate-700"><p class="text-slate-500 text-[10px] uppercase">交通影响等级</p><p class="text-yellow-500 text-sm font-bold">中等影响 (Level 2)</p></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+</div>
+
+<!-- ===== 新增道路录入弹窗 ===== -->
+<div id="road-modal" class="modal-overlay hidden">
+  <div class="bg-white rounded-2xl shadow-2xl w-[480px] max-h-[92vh] flex flex-col">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
+      <h3 id="modal-title" class="text-lg font-bold text-gov-dark flex items-center"><iconify-icon icon="mdi:road-plus" class="mr-2 text-xl"></iconify-icon> 新增道路病害数据</h3>
+      <button onclick="closeRoadModal()" class="text-slate-400 hover:text-slate-700 transition-colors"><iconify-icon icon="mdi:close" class="text-2xl"></iconify-icon></button>
+    </div>
+    <div class="p-6 space-y-4 overflow-y-auto custom-scrollbar">
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">道路名称 <span class="text-red-500">*</span></label>
+        <input id="f-name" class="form-input" placeholder="例如：高新大道" />
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">PCI 健康评分 (0-100)</label>
+          <input id="f-pci" type="number" min="0" max="100" value="80" class="form-input" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">待修复面积 (m²)</label>
+          <input id="f-area" type="number" min="0" value="200" class="form-input" />
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">病害数据录入方式</label>
+        <select id="f-input-mode" class="form-input" onchange="toggleInputMode()">
+          <option value="unified">整段统一录入（一组比例）</option>
+          <option value="segmented">按里程分段 / 读取路检报告</option>
+        </select>
+      </div>
+      <div id="unified-wrap">
+        <div class="flex items-center justify-between mb-1">
+          <label class="text-sm font-medium text-slate-700">病害构成比例 (%)</label>
+          <span id="disease-sum" class="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">合计 0%</span>
+        </div>
+        <div class="grid grid-cols-5 gap-2">
+          <div><label class="text-[11px] text-blue-600 font-medium block text-center">裂缝</label><input id="f-cracks" type="number" min="0" value="30" class="form-input text-center" oninput="updateDiseaseSum()"></div>
+          <div><label class="text-[11px] text-red-600 font-medium block text-center">坑槽</label><input id="f-potholes" type="number" min="0" value="25" class="form-input text-center" oninput="updateDiseaseSum()"></div>
+          <div><label class="text-[11px] text-yellow-600 font-medium block text-center">车辙</label><input id="f-rutting" type="number" min="0" value="20" class="form-input text-center" oninput="updateDiseaseSum()"></div>
+          <div><label class="text-[11px] text-purple-600 font-medium block text-center">沉陷</label><input id="f-subsidence" type="number" min="0" value="15" class="form-input text-center" oninput="updateDiseaseSum()"></div>
+          <div><label class="text-[11px] text-slate-500 font-medium block text-center">其他</label><input id="f-others" type="number" min="0" value="10" class="form-input text-center" oninput="updateDiseaseSum()"></div>
+        </div>
+        <p class="text-[11px] text-slate-400 mt-1">饼图按上述比例自动归一化展示，合计无需强制等于 100。</p>
+      </div>
+      <div id="seg-wrap" class="hidden rounded-lg border border-slate-200 p-3 bg-slate-50/60">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-semibold text-gov-dark">分段病害录入（按里程，单位 m）</span>
+          <div class="space-x-2">
+            <button type="button" onclick="addSegRow()" class="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700">+ 添加分段</button>
+            <button type="button" onclick="autoSegRows()" class="text-xs bg-slate-600 text-white px-2 py-1 rounded hover:bg-slate-500">每20m均分</button>
+          </div>
+        </div>
+        <div class="overflow-x-auto max-h-40">
+          <table class="w-full text-[11px] border-collapse">
+            <thead><tr class="text-slate-500 text-left"><th class="px-1">起点</th><th class="px-1">终点</th><th class="px-1">裂缝</th><th class="px-1">坑槽</th><th class="px-1">车辙</th><th class="px-1">沉陷</th><th class="px-1">其他</th><th></th></tr></thead>
+            <tbody id="seg-rows"></tbody>
+          </table>
+        </div>
+        <div class="mt-2">
+          <label class="block text-xs font-medium text-slate-600 mb-1">读取路检报告（支持 Word(.docx)、文本/CSV/JSON；AI 将智能识别并自动分段填写）</label>
+          <input id="f-report" type="file" accept=".doc,.docx,.txt,.md,.csv,.json" class="form-input text-xs py-1" onchange="handleReport(event)" />
+          <p class="text-[11px] text-slate-400 mt-1">上传 Word 或文本报告后，系统先在本地提取文字，再调用 <b>AI 智能分析</b>自动分段、推断整体 PCI 与待修复面积、并逐段填写各类病害强度，无需手动输入；AI 不可用时回退本地解析。</p>
+          <div id="report-auto-note" class="hidden mt-2 text-[11px] text-green-700 bg-green-50 border border-green-200 rounded px-2 py-1"></div>
+        </div>
+      </div>
+      <div class="rounded-lg border border-slate-200 p-3 bg-slate-50/60">
+        <div class="text-xs font-semibold text-gov-dark mb-2">起终点坐标（WGS84，可在地图上查取）</div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] font-medium text-slate-600 mb-1">起点纬度</label>
+            <input id="f-slat" type="number" step="0.0001" value="30.5930" class="form-input" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-medium text-slate-600 mb-1">起点经度</label>
+            <input id="f-slng" type="number" step="0.0001" value="114.3050" class="form-input" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-medium text-slate-600 mb-1">终点纬度</label>
+            <input id="f-elat" type="number" step="0.0001" value="30.5465" class="form-input" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-medium text-slate-600 mb-1">终点经度</label>
+            <input id="f-elng" type="number" step="0.0001" value="114.3490" class="form-input" />
+          </div>
+        </div>
+      </div>
+      <button type="button" onclick="startPick()" class="w-full flex items-center justify-center space-x-2 text-xs bg-gov-dark text-white px-3 py-2 rounded-md hover:bg-blue-900 transition-colors">
+        <iconify-icon icon="mdi:map-marker-plus" class="text-base"></iconify-icon><span>在地图上点选路线（可选多点作为途经点）</span>
+      </button>
+      <div id="waypoint-list" class="hidden mt-2 text-[11px] bg-blue-50 border border-blue-200 rounded px-2 py-1.5 space-y-0.5"></div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">道路线形拟合方式</label>
+        <select id="f-mode" class="form-input">
+          <option value="through">沿点连线（贴合点选路径）</option>
+          <option value="driving">驾车（贴合市政道路网）</option>
+          <option value="riding">骑行</option>
+          <option value="walking">步行</option>
+        </select>
+      </div>
+      <p class="text-[11px] text-slate-400">地图点选模式下默认<b>"沿点连线"</b>，折线严格经过每个途经点；若需贴合路网可选"驾车/骑行/步行"。只填一个起点则生成直线示意段。</p>
+      <div id="modal-error" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
+    </div>
+    <div class="px-6 py-4 border-t border-slate-200 flex justify-end space-x-3 shrink-0">
+      <button onclick="closeRoadModal()" class="px-4 py-2 text-sm rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 transition-colors">取消</button>
+      <button id="addRoadBtn" onclick="addRoad()" class="px-5 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors flex items-center space-x-2">
+        <iconify-icon icon="mdi:content-save-check" class="text-base"></iconify-icon><span>保存并生成分析</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== 道路数据 (BD09 坐标) =====
+const roads = [
+  { id:"WH-RD-001", name:"珞喻路", pci:92, coords:[[30.529,114.3478],[30.527,114.3542],[30.5263,114.3565],[30.5249,114.3586],[30.5232,114.361],[30.5224,114.3621],[30.5215,114.3644],[30.5182,114.3788],[30.5178,114.3804],[30.5173,114.3816],[30.5168,114.3822],[30.5149,114.3843],[30.5136,114.3858],[30.5116,114.3881],[30.5102,114.3897],[30.5094,114.3913],[30.5085,114.3936],[30.5086,114.395],[30.5089,114.3969],[30.5095,114.4008],[30.5099,114.4038],[30.51,114.4046],[30.51,114.4057],[30.5098,114.4077],[30.5094,114.4133],[30.5089,114.4183]], diseases:{cracks:45,potholes:15,rutting:20,subsidence:10,others:10}, risk:"低风险", area:124 },
+  { id:"WH-RD-002", name:"光谷大道", pci:68, coords:[[30.4142,114.4543],[30.4172,114.4492],[30.4372,114.4184],[30.4384,114.4172],[30.44,114.4162],[30.4419,114.4158],[30.4558,114.4152],[30.4672,114.4148],[30.4762,114.4146],[30.4806,114.4153],[30.4855,114.4157],[30.489,114.416],[30.4915,114.4161],[30.4962,114.4167],[30.4978,114.4169],[30.4987,114.417],[30.5023,114.4174],[30.5059,114.4178],[30.5089,114.4183]], diseases:{cracks:30,potholes:40,rutting:10,subsidence:15,others:5}, risk:"中风险", area:560 },
+  { id:"WH-RD-003", name:"雄楚大道", pci:75, coords:[[30.5124,114.3442],[30.5124,114.3458],[30.5125,114.347],[30.5126,114.3496],[30.5126,114.3508],[30.5126,114.3524],[30.5124,114.354],[30.5122,114.3553],[30.5117,114.3569],[30.5112,114.3584],[30.51,114.361],[30.5081,114.3654],[30.5076,114.3669],[30.5073,114.368],[30.5073,114.369],[30.5074,114.3724],[30.5075,114.3741],[30.5074,114.3748],[30.5071,114.3755],[30.5068,114.3759],[30.506,114.3772],[30.5044,114.3796],[30.5016,114.3839],[30.5013,114.3846],[30.501,114.3852],[30.5008,114.3858],[30.5006,114.3869],[30.5006,114.3878],[30.5003,114.3927],[30.5002,114.3942],[30.4999,114.3997],[30.4997,114.4045],[30.4995,114.4064],[30.499,114.4122],[30.4986,114.4147],[30.4982,114.4161],[30.4978,114.4169],[30.4977,114.4171],[30.4965,114.4194],[30.4951,114.423],[30.494,114.4256],[30.4936,114.427],[30.4926,114.4306],[30.492,114.4344],[30.491,114.4402],[30.4902,114.4435],[30.4889,114.4479],[30.4879,114.4518]], diseases:{cracks:20,potholes:20,rutting:40,subsidence:10,others:10}, risk:"中风险", area:342 },
+  { id:"WH-RD-004", name:"沿江大道", pci:95, coords:[[30.6313,114.3231],[30.6316,114.323],[30.6324,114.3236],[30.6334,114.3241],[30.6338,114.3244],[30.6343,114.3247],[30.6343,114.3248],[30.6346,114.3249],[30.6356,114.3256],[30.636,114.3258],[30.6366,114.3262],[30.6374,114.3267],[30.6377,114.327],[30.6384,114.3276],[30.6385,114.3277],[30.6387,114.328],[30.6391,114.3284],[30.6394,114.3288],[30.6395,114.329],[30.6397,114.3291],[30.6399,114.3292],[30.6401,114.3294],[30.6403,114.3295],[30.6405,114.3298],[30.6411,114.3308],[30.6415,114.3315],[30.6415,114.3318],[30.6416,114.332],[30.6419,114.3322],[30.6429,114.3329],[30.6431,114.333]], diseases:{cracks:80,potholes:5,rutting:5,subsidence:5,others:5}, risk:"低风险", area:45 },
+  { id:"WH-RD-005", name:"解放大道", pci:82, coords:[[30.693,114.3417],[30.6907,114.341],[30.6866,114.3396],[30.6854,114.3391],[30.6832,114.3383],[30.6831,114.3383],[30.6808,114.3375],[30.6777,114.3362],[30.6755,114.3354],[30.6734,114.3346],[30.6698,114.3333],[30.6669,114.3322],[30.6669,114.3322],[30.6606,114.33],[30.6574,114.3288],[30.6562,114.3284],[30.6547,114.3278],[30.6532,114.3272],[30.6512,114.3265],[30.6466,114.3248],[30.645,114.3242],[30.6432,114.3234],[30.6424,114.323],[30.6392,114.3214],[30.6378,114.3207],[30.6372,114.3202],[30.636,114.3192],[30.6341,114.3179],[30.6341,114.3178],[30.633,114.3171],[30.6309,114.3157],[30.6282,114.3138],[30.6268,114.3128],[30.6238,114.3107],[30.6231,114.3102],[30.6224,114.3097],[30.6199,114.308],[30.6189,114.3072],[30.6151,114.3041],[30.6112,114.3006],[30.608,114.2984],[30.6057,114.2969],[30.6052,114.2964],[30.6047,114.296],[30.6038,114.2952],[30.6036,114.295],[30.6023,114.2934],[30.5999,114.2906],[30.5988,114.2892],[30.597,114.2874],[30.5951,114.2856],[30.5924,114.283],[30.5918,114.2826],[30.59,114.281],[30.5885,114.2795],[30.5881,114.2792],[30.5877,114.2785],[30.5867,114.2753],[30.5863,114.2738],[30.5856,114.2713],[30.5847,114.2683],[30.5841,114.2664],[30.5833,114.2637],[30.5826,114.2612],[30.5822,114.2598],[30.5817,114.2584],[30.5812,114.2572],[30.5803,114.2554],[30.5802,114.2548],[30.5802,114.2532],[30.5802,114.2514],[30.5803,114.2494],[30.5803,114.2482],[30.5802,114.2474],[30.5797,114.2464],[30.5786,114.2444],[30.578,114.2434],[30.5777,114.2421],[30.5777,114.2417],[30.5779,114.2379],[30.5781,114.2331],[30.5781,114.2326],[30.5783,114.2299],[30.579,114.2277],[30.5799,114.2259],[30.5815,114.223],[30.5834,114.2203],[30.5853,114.2177],[30.5865,114.2164],[30.5871,114.2154],[30.5874,114.2146],[30.5886,114.2118],[30.589,114.2111],[30.5899,114.2089],[30.5912,114.2069],[30.5939,114.2029],[30.5962,114.1983],[30.598,114.1949],[30.6005,114.1901],[30.6019,114.1874],[30.6037,114.1838],[30.6052,114.1808],[30.6065,114.1782],[30.6082,114.1748],[30.6096,114.1721],[30.6107,114.1699],[30.6108,114.1696],[30.612,114.1651],[30.6127,114.1623],[30.6129,114.1617],[30.6138,114.1607],[30.6147,114.16],[30.6163,114.1588],[30.6193,114.1566]], diseases:{cracks:50,potholes:10,rutting:20,subsidence:10,others:10}, risk:"低风险", area:210 },
+  { id:"WH-RD-006", name:"建设大道", pci:88, coords:[[30.5878,114.2229],[30.5881,114.2247],[30.5889,114.2265],[30.5893,114.2275],[30.5894,114.2285],[30.5893,114.2291],[30.5887,114.23],[30.5873,114.2317],[30.5871,114.2321],[30.5869,114.2327],[30.5867,114.2333],[30.5866,114.2341],[30.587,114.2353],[30.5875,114.2364],[30.5879,114.2372],[30.5881,114.2378],[30.5882,114.2389],[30.5883,114.2399],[30.5881,114.2405],[30.5877,114.241],[30.587,114.242],[30.5866,114.2425],[30.5864,114.243],[30.5862,114.2441],[30.5864,114.2458],[30.5868,114.2471],[30.587,114.2474],[30.5873,114.2478],[30.5878,114.2481],[30.5896,114.2494],[30.5906,114.2503],[30.5908,114.2504],[30.5915,114.2511],[30.5929,114.2523],[30.5951,114.2553],[30.5966,114.2579],[30.5968,114.2607],[30.5968,114.2612],[30.597,114.262],[30.5975,114.2634],[30.5983,114.2651],[30.5988,114.2663]], diseases:{cracks:60,potholes:10,rutting:10,subsidence:10,others:10}, risk:"低风险", area:98 },
+  { id:"WH-RD-007", name:"发展大道", pci:58, coords:[[30.6363,114.3127],[30.6365,114.3143],[30.6368,114.3152],[30.6369,114.316],[30.6369,114.3166],[30.6368,114.3172],[30.6364,114.318],[30.6363,114.3184],[30.6359,114.3192]], diseases:{cracks:25,potholes:35,rutting:20,subsidence:15,others:5}, risk:"高风险", area:890 },
+  { id:"WH-RD-008", name:"汉阳大道", pci:72, coords:[[30.5669,114.171],[30.567,114.1723],[30.567,114.1741],[30.567,114.1752],[30.5672,114.1767],[30.568,114.1811],[30.5683,114.1823],[30.5692,114.1841],[30.5692,114.1843],[30.5695,114.1854],[30.5696,114.1861],[30.5695,114.187],[30.5694,114.188],[30.5692,114.1885],[30.5686,114.1901],[30.5679,114.1922],[30.5676,114.1931],[30.5674,114.1939],[30.567,114.196],[30.5664,114.1986],[30.5661,114.2004],[30.5657,114.2018],[30.5654,114.2025],[30.5646,114.2047],[30.5635,114.2079],[30.5627,114.2107],[30.5623,114.2118],[30.5618,114.2137],[30.5613,114.2159],[30.5606,114.2188],[30.5598,114.222],[30.5592,114.2257],[30.5588,114.228],[30.5587,114.2283],[30.5585,114.2297],[30.5584,114.2303],[30.5581,114.2313],[30.5579,114.2319],[30.5565,114.2356],[30.556,114.2369],[30.555,114.2398],[30.5543,114.2418],[30.5543,114.242],[30.5543,114.2421],[30.5538,114.2448],[30.5536,114.2461],[30.5535,114.2466],[30.553,114.2498],[30.5524,114.254],[30.5522,114.2553],[30.5521,114.2567],[30.5521,114.2575],[30.5521,114.2607],[30.5522,114.263],[30.5523,114.2648],[30.5524,114.2673],[30.5524,114.2692],[30.5524,114.2699],[30.5522,114.2713],[30.552,114.2723],[30.5518,114.2728],[30.5511,114.2747]], diseases:{cracks:40,potholes:20,rutting:20,subsidence:10,others:10}, risk:"中风险", area:412 },
+  { id:"WH-RD-009", name:"鹦鹉大道", pci:85, coords:[[30.566,114.2621],[30.5635,114.2616],[30.5623,114.2613],[30.5588,114.2605],[30.5566,114.2605],[30.5542,114.2606],[30.5521,114.2607],[30.5501,114.2607],[30.5484,114.2608],[30.5471,114.2609],[30.5452,114.2609],[30.5402,114.2614],[30.5379,114.2616],[30.5365,114.2615],[30.5361,114.2609],[30.5188,114.2442],[30.5147,114.2402]], diseases:{cracks:55,potholes:15,rutting:15,subsidence:10,others:5}, risk:"低风险", area:156 },
+  { id:"WH-RD-010", name:"友谊大道", pci:79, coords:[[30.5265,114.3052],[30.5268,114.3061],[30.5269,114.3068],[30.527,114.3074],[30.5273,114.3078],[30.5279,114.3083],[30.5286,114.3087],[30.5299,114.3089],[30.5311,114.3093],[30.5318,114.3097],[30.5325,114.3103],[30.5335,114.3109],[30.5343,114.3111],[30.5351,114.3113],[30.5367,114.3117],[30.5396,114.3123],[30.5427,114.3132],[30.544,114.3134],[30.5449,114.3135],[30.546,114.3133],[30.5485,114.3128],[30.5528,114.3122],[30.5542,114.312],[30.5552,114.3119],[30.556,114.3119],[30.56,114.3118],[30.56,114.3118],[30.56,114.3118],[30.5635,114.3117],[30.5651,114.3117],[30.567,114.3116],[30.5675,114.3117],[30.5679,114.3119],[30.5683,114.3121],[30.5688,114.3124],[30.5731,114.3166],[30.5767,114.3198],[30.5902,114.3357],[30.591,114.3364],[30.5924,114.338],[30.5957,114.3408],[30.5981,114.343],[30.6007,114.3454],[30.604,114.3489],[30.6073,114.3537],[30.6095,114.3568],[30.6103,114.3579],[30.6107,114.3584],[30.6109,114.3588],[30.6124,114.3611],[30.614,114.3639],[30.6153,114.3667],[30.616,114.3683],[30.6176,114.3715],[30.6181,114.3726],[30.6199,114.3765],[30.6217,114.3804],[30.6217,114.3817],[30.6217,114.386],[30.6217,114.3905],[30.6217,114.395],[30.6217,114.3995],[30.6216,114.4027],[30.6216,114.408],[30.6216,114.4147],[30.6216,114.4183],[30.6216,114.4202],[30.6216,114.4224],[30.6212,114.4261],[30.6209,114.4313]], diseases:{cracks:35,potholes:25,rutting:20,subsidence:15,others:5}, risk:"中风险", area:287 },
+  { id:"WH-RD-011", name:"中山路", pci:64, coords:[[30.556,114.3119],[30.5559,114.3106],[30.5565,114.3092],[30.5569,114.3081],[30.5571,114.3065],[30.5574,114.3041],[30.5577,114.3003],[30.5577,114.2993],[30.5576,114.2982],[30.5575,114.297],[30.5576,114.2962],[30.5577,114.2953],[30.5579,114.2948],[30.5582,114.2942]], diseases:{cracks:20,potholes:30,rutting:30,subsidence:15,others:5}, risk:"高风险", area:670 },
+  { id:"WH-RD-012", name:"和平大道", pci:81, coords:[[30.5577,114.3003],[30.5595,114.3012],[30.5606,114.3017],[30.5632,114.303],[30.5667,114.3051],[30.5693,114.307],[30.5709,114.3082],[30.5736,114.3107],[30.5793,114.3161],[30.5816,114.318],[30.583,114.3192],[30.5851,114.321],[30.5867,114.3224],[30.5883,114.3237],[30.5912,114.3261],[30.6085,114.3441],[30.6166,114.3549],[30.6169,114.3553],[30.6199,114.3592],[30.6207,114.3604],[30.6224,114.363],[30.6249,114.367],[30.6271,114.3706],[30.6285,114.3729],[30.6293,114.3742],[30.6315,114.3777],[30.6338,114.3815],[30.6363,114.3854],[30.6384,114.3898],[30.6404,114.3939],[30.6423,114.3977],[30.6441,114.4013],[30.6459,114.4052],[30.6458,114.4068],[30.6457,114.4078],[30.6446,114.416],[30.6443,114.4187]], diseases:{cracks:45,potholes:15,rutting:25,subsidence:10,others:5}, risk:"低风险", area:230 },
+  { id:"WH-RD-013", name:"临江大道", pci:90, coords:[[30.5382,114.2847],[30.5399,114.285],[30.5409,114.2852],[30.5414,114.2856],[30.5423,114.2861],[30.5429,114.2864],[30.5453,114.2871],[30.5466,114.2873],[30.5478,114.2875],[30.5486,114.2876],[30.5492,114.2877],[30.55,114.2882],[30.5501,114.2882],[30.5519,114.2891],[30.5522,114.2893],[30.5528,114.2895],[30.5529,114.2897],[30.5537,114.2904],[30.5551,114.2914],[30.5566,114.2925],[30.5576,114.2935],[30.5582,114.2942],[30.5592,114.2949],[30.5599,114.2956],[30.5616,114.2973],[30.5629,114.2986],[30.564,114.2996],[30.5645,114.3],[30.5663,114.3012],[30.5678,114.3022],[30.5693,114.3031],[30.5703,114.3038],[30.572,114.3048],[30.5757,114.3069],[30.5777,114.3078],[30.5783,114.3083],[30.5786,114.3086],[30.5788,114.3088],[30.5791,114.3092],[30.5794,114.3098],[30.5796,114.31],[30.5801,114.3107],[30.5819,114.3122],[30.5848,114.3143],[30.5882,114.3165],[30.5913,114.3189],[30.5967,114.3232],[30.5975,114.3238],[30.599,114.3252],[30.6023,114.3279],[30.6038,114.3293],[30.6064,114.3316],[30.608,114.3331],[30.6091,114.334],[30.6097,114.3347],[30.6108,114.3361],[30.6115,114.3368],[30.6134,114.3383],[30.6168,114.3421],[30.6222,114.3481],[30.6224,114.3484],[30.6228,114.3488],[30.6263,114.3531],[30.629,114.3562],[30.6296,114.3571],[30.6321,114.361],[30.6343,114.3647],[30.6358,114.3673],[30.6364,114.3682],[30.6393,114.373],[30.6427,114.379],[30.6438,114.3812],[30.6448,114.3833],[30.6457,114.3851],[30.6474,114.3893],[30.6489,114.3933],[30.6519,114.4014],[30.6525,114.4029]], diseases:{cracks:70,potholes:10,rutting:10,subsidence:5,others:5}, risk:"低风险", area:88 },
+  { id:"WH-RD-014", name:"关山大道", pci:62, coords:[[30.4653,114.4021],[30.4664,114.4027],[30.4673,114.4029],[30.4693,114.403],[30.4699,114.4031],[30.472,114.4033],[30.4762,114.4036],[30.4816,114.4043],[30.4848,114.4048],[30.4863,114.4049],[30.4897,114.4053],[30.49,114.4053],[30.4918,114.4055],[30.4946,114.4059],[30.4969,114.4061],[30.4971,114.4062],[30.4995,114.4064],[30.5018,114.4067],[30.5037,114.4069],[30.5038,114.407],[30.5061,114.4072],[30.507,114.4073],[30.5098,114.4077]], diseases:{cracks:15,potholes:45,rutting:20,subsidence:15,others:5}, risk:"高风险", area:720 },
+  { id:"WH-RD-015", name:"民族大道", pci:77, coords:[[30.5085,114.3936],[30.5058,114.3933],[30.5051,114.3932],[30.5044,114.3931],[30.5028,114.393],[30.5003,114.3927],[30.4974,114.3919],[30.4959,114.3914],[30.4938,114.3909],[30.493,114.3907],[30.4921,114.3904],[30.4915,114.3904],[30.4908,114.3903],[30.4895,114.3902],[30.4865,114.3901],[30.4819,114.39],[30.4771,114.3887],[30.4757,114.3883],[30.4749,114.388],[30.4711,114.3869],[30.4691,114.3865],[30.4636,114.3849]], diseases:{cracks:30,potholes:25,rutting:25,subsidence:15,others:5}, risk:"中风险", area:310 },
+  { id:"WH-RD-016", name:"南湖大道", pci:84, coords:[[30.4849,114.3079],[30.4848,114.3086],[30.4847,114.3092],[30.4846,114.3101],[30.4845,114.3107],[30.4844,114.3133],[30.4843,114.3168],[30.4841,114.3204],[30.484,114.3234],[30.4839,114.3247],[30.4838,114.3258],[30.4837,114.3267],[30.4836,114.3275],[30.4832,114.329],[30.4827,114.3311],[30.4826,114.3315],[30.4822,114.3336],[30.4822,114.3342],[30.4823,114.3352],[30.4825,114.3369],[30.4825,114.3385],[30.4825,114.341],[30.4827,114.3437],[30.4828,114.3453],[30.4828,114.3467],[30.4829,114.3477],[30.4828,114.3488],[30.4827,114.3502],[30.4825,114.3521],[30.4823,114.354],[30.482,114.3559],[30.482,114.3572],[30.4821,114.3584],[30.4823,114.3602],[30.4829,114.362],[30.4834,114.3635],[30.4837,114.3651],[30.484,114.3667],[30.484,114.368],[30.484,114.369],[30.4839,114.3692],[30.4838,114.37],[30.4834,114.3715],[30.4828,114.3734],[30.4823,114.3751],[30.4819,114.3769],[30.4817,114.3786],[30.4816,114.3797],[30.4816,114.3836],[30.4815,114.3857],[30.4815,114.3871],[30.4815,114.388],[30.4817,114.3888],[30.4819,114.39],[30.4822,114.3913],[30.4823,114.392],[30.4823,114.3924],[30.4823,114.3934],[30.4823,114.3956],[30.4823,114.3966],[30.4822,114.3976],[30.482,114.3993],[30.4816,114.4043]], diseases:{cracks:50,potholes:15,rutting:20,subsidence:10,others:5}, risk:"低风险", area:180 },
+  { id:"WH-RD-017", name:"白沙洲大道", pci:55, coords:[[30.4304,114.2531],[30.4328,114.2546],[30.4341,114.2554],[30.4357,114.2558],[30.4372,114.2561],[30.4392,114.2559],[30.4401,114.2558],[30.4426,114.2556],[30.4446,114.256],[30.4463,114.2566],[30.4478,114.2575],[30.4519,114.2598],[30.4532,114.2606],[30.4549,114.2616],[30.4566,114.2625],[30.459,114.2636],[30.461,114.2642],[30.4625,114.2644],[30.4649,114.2644],[30.4658,114.2644],[30.4695,114.2645],[30.4721,114.2644],[30.4739,114.2648],[30.4751,114.2656],[30.4766,114.2665],[30.4792,114.2682],[30.4824,114.2705],[30.4839,114.2714],[30.4846,114.2719],[30.4852,114.2723],[30.4873,114.2737],[30.4892,114.275],[30.4922,114.2769],[30.4943,114.2782],[30.4976,114.281],[30.4981,114.2815],[30.4998,114.283],[30.5024,114.2855],[30.5026,114.2856],[30.5043,114.2873],[30.5061,114.2891],[30.5075,114.2903],[30.5088,114.2912],[30.5116,114.2927],[30.5135,114.2937],[30.5167,114.2943],[30.5185,114.2947],[30.5204,114.2951],[30.5211,114.2954],[30.5216,114.296],[30.522,114.2967],[30.5221,114.2973],[30.5222,114.2984],[30.5223,114.2993],[30.5225,114.3001],[30.5226,114.3004],[30.5235,114.3025],[30.5236,114.3029],[30.5242,114.3036],[30.5248,114.304],[30.5258,114.3046],[30.5262,114.3048],[30.5265,114.3052]], diseases:{cracks:20,potholes:40,rutting:20,subsidence:15,others:5}, risk:"极高风险", area:1050 },
+  { id:"WH-RD-018", name:"江城大道", pci:89, coords:[[30.4645,114.1831],[30.4699,114.1834],[30.4737,114.1837],[30.4808,114.1858],[30.489,114.1884],[30.5029,114.1997],[30.5047,114.2011],[30.5097,114.2051],[30.5155,114.2099],[30.5172,114.2112],[30.5192,114.2129],[30.5226,114.215],[30.5247,114.2164],[30.5258,114.2173],[30.53,114.22],[30.5328,114.2218],[30.5344,114.2229],[30.5359,114.2239],[30.5516,114.2343],[30.5524,114.2349],[30.554,114.236],[30.556,114.2369],[30.5613,114.2394],[30.5654,114.2422],[30.567,114.2432]], diseases:{cracks:65,potholes:10,rutting:15,subsidence:5,others:5}, risk:"低风险", area:110 },
+  { id:"WH-RD-019", name:"沌阳大道", pci:74, coords:[[30.4706,114.206],[30.4744,114.1993],[30.4775,114.1937],[30.4791,114.1907],[30.4794,114.1903],[30.4797,114.1894],[30.4808,114.1858],[30.4824,114.1786],[30.4841,114.171],[30.4847,114.1681],[30.4854,114.1651],[30.4869,114.159],[30.4885,114.1564],[30.4903,114.1538],[30.4918,114.1514],[30.4929,114.1495],[30.4945,114.147],[30.4971,114.143],[30.5003,114.1379]], diseases:{cracks:35,potholes:25,rutting:20,subsidence:15,others:5}, risk:"中风险", area:380 },
+  { id:"WH-RD-020", name:"东风大道", pci:67, coords:[[30.5259,114.18],[30.5077,114.1647],[30.5049,114.1623],[30.5028,114.1605],[30.4977,114.1563],[30.4944,114.1535],[30.4918,114.1514],[30.4905,114.1504],[30.489,114.1491],[30.4865,114.1471],[30.4818,114.1433],[30.479,114.1401],[30.4768,114.1363],[30.4745,114.1317],[30.4712,114.1245],[30.4687,114.119],[30.4666,114.1146],[30.4644,114.1099],[30.4623,114.1054],[30.4609,114.1024],[30.46,114.1003],[30.4593,114.0978],[30.4583,114.0915],[30.4575,114.0857],[30.4566,114.0795],[30.4558,114.0735],[30.4547,114.0652],[30.4545,114.0636]], diseases:{cracks:25,potholes:35,rutting:25,subsidence:10,others:5}, risk:"中风险", area:620 }
+];
+
+// ===== 为每条道路生成分段PCI数据 =====
+// ===== 病害严重程度 -> 路段 PCI 估算（简化模型）=====
+// d: {cracks,potholes,rutting,subsidence,others} 各项占比(0-100)
+// d: {cracks,potholes,rutting,subsidence,others} 各项病害强度(0-100)
+// 病害总负荷 S = Σ w·d  →  PCI = 100 - S·0.9
+//   S=0 -> 100(全绿); S≈11 -> 90; S≈70 -> 37; S≈110 -> 0(全红)
+// 依据《公路技术状况评定标准》JTG H20 / 城镇道路养护规范 CJJ 36 计算 PCI
+// 输入 d 为各病害相对强度(0-100); 输出 0~100 的路面健康指数
+// 核心公式: PCI = 100 - Σ(d_k × w_k) × scale_factor
+// w_k 取自规范中沥青路面典型权重(归一化后), scale_factor 控制整体分布使:
+//   轻微病害(各项≤20) → PCI ≥85; 中度(某项40~60) → PCI 65~80; 重度(多项>70) → PCI <50
+function pciFromDiseases(d) {
+  // JTG H20 沥青路面病害权重(归一化): 裂缝影响最大但非致命, 坑槽次之, 车辙/沉陷适中, 其他轻微
+  const w = { cracks: 0.28, potholes: 0.22, rutting: 0.18, subsidence: 0.22, others: 0.10 };
+  let S = 0;
+  for (const k in w) S += (d[k] || 0) * w[k];
+  // 非线性映射: 低病害区段 PCI 缓慢下降(保持高位), 高病害区段加速下降
+  // S_max ≈ 100×1.0 = 100 → PCI≈25; S=0 → PCI=100; S=30(中度)→PCI≈73; S=60(重度)→PCI≈52
+  const pci = 100 - Math.pow(S / 100, 0.75) * 75;
+  return Math.max(0, Math.min(100, Math.round(pci)));
+}
+function hashStr(s) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return Math.abs(h);
+}
+// 长度加权平均病害构成（用于饼图/卡片）
+function aggregateDiseases(segData) {
+  const totals = { cracks:0, potholes:0, rutting:0, subsidence:0, others:0 };
+  let totalLen = 0;
+  segData.forEach(s => {
+    const len = Math.max(1, (s.endM - s.startM) || 1);
+    for (const k in totals) totals[k] += (s.diseases[k] || 0) * len;
+    totalLen += len;
+  });
+  const out = {};
+  for (const k in totals) out[k] = totalLen > 0 ? Math.round(totals[k] / totalLen) : 0;
+  return out;
+}
+function weightedPci(segData) {
+  let sum = 0, len = 0;
+  segData.forEach(s => { const l = Math.max(1, (s.endM - s.startM) || 1); sum += (s.pci || 0) * l; len += l; });
+  return len > 0 ? Math.round(sum / len) : 0;
+}
+// 默认道路宽度(米), 用于根据 PCI 与段长自动估算待修复面积
+const DEFAULT_ROAD_WIDTH = 7;  // 城市道路典型单车道宽度约 3.5m × 2 车道 ≈ 7m
+// 根据 PCI 分段情况自动估算待修复面积: 有病害的段长 × 道路宽度 × 修复比例
+// 修复比例: PCI≥90→0%, ≥75→25%, ≥60→55%, <60→85%
+function estimateRepairArea(segs) {
+  if (!segs || !segs.length) return 0;
+  let area = 0;
+  segs.forEach(s => {
+    const len = Math.max(0, (s.endM || 0) - (s.startM || 0));
+    if (len <= 0) return;
+    const pci = s.pci != null ? s.pci : pciFromDiseases(s.diseases || {});
+    let ratio = 0;
+    if (pci < 60) ratio = 0.85;
+    else if (pci < 75) ratio = 0.55;
+    else if (pci < 90) ratio = 0.25;
+    else ratio = 0.0; // PCI≥90 几乎无需修复
+    area += len * DEFAULT_ROAD_WIDTH * ratio;
+  });
+  return Math.round(area);
+}
+// 按里程从整条路坐标中截取某段的 coords
+function segmentCoords(coords, startM, endM) {
+  const n = coords.length;
+  if (n < 2) return coords.slice();
+  const dist = [0];
+  for (let i = 1; i < n; i++) dist.push(dist[i-1] + haversine(coords[i-1], coords[i]));
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    if (dist[i] >= startM - 1e-6 && dist[i] <= endM + 1e-6) pts.push(coords[i]);
+  }
+  if (pts.length >= 2) return pts;
+  const res = [];
+  const at = (m) => {
+    const mm = Math.max(0, Math.min(dist[n-1], m));
+    let i = 0; while (i < n - 2 && dist[i+1] < mm) i++;
+    const t = (mm - dist[i]) / ((dist[i+1] - dist[i]) || 1);
+    res.push([coords[i][0] + (coords[i+1][0]-coords[i][0]) * t, coords[i][1] + (coords[i+1][1]-coords[i][1]) * t]);
+  };
+  at(startM); at(endM);
+  return res;
+}
+// 既有道路: 无逐段数据时, 以"路面总体 PCI 评价"为基准生成真实起伏的分段,
+// 保证各段 PCI 的(长度加权)均值 ≈ 道路总体 PCI, 使地图颜色与总体评价一致。
+function ensureSegData(road) {
+  if (road.segData && road.segData.length) return;
+  const total = road.length || computeLength(road.coords) || 1000;
+  const segCount = Math.max(4, Math.round(total / 400));
+  const segLen = total / segCount;
+  const target = clamp(road.pci != null ? road.pci : 80, 0, 100);
+  const base = road.diseases || { cracks:0, potholes:0, rutting:0, subsidence:0, others:0 };
+  const segs = [];
+  for (let i = 0; i < segCount; i++) {
+    const start = Math.round(i * segLen), end = Math.round((i + 1) * segLen);
+    const seed = hashStr((road.id || road.name) + ':' + i);
+    // 围绕总体 PCI 做有界波动: 多数路段接近总体水平, 约 1/6 明显更差(制造真实起伏)
+    let swing = (seed % 9) - 4;                        // -4 ~ +4 基础波动
+    const worseChance = target >= 90 ? 8 : (target >= 60 ? 5 : 4);
+    if (seed % worseChance === 0) swing -= (4 + (seed % 7)); // 少数路段明显更差
+    const pci = clamp(Math.round(target + swing), 0, 100);
+    // 病害构成: 以道路总体构成为基线做轻微扰动, 保证汇总后≈总体构成(供饼图一致)
+    const d = {};
+    for (const k in base) {
+      const v = (base[k] || 0) + ((hashStr((road.id||road.name) + ':' + i + ':' + k) % 11) - 5);
+      d[k] = Math.max(0, Math.min(100, Math.round(v)));
+    }
+    segs.push({ startM: start, endM: end, diseases: d, pci });
+  }
+  // 归一化: 整体平移使长度加权均值严格等于 target(与总体评价一致)
+  let sum = 0, len = 0;
+  segs.forEach(s => { const l = (s.endM - s.startM) || 1; sum += s.pci * l; len += l; });
+  const shift = target - (len > 0 ? sum / len : target);
+  if (Math.abs(shift) >= 0.5) segs.forEach(s => { s.pci = clamp(Math.round(s.pci + shift), 0, 100); });
+  road.segData = segs;
+}
+
+const aiReasons = [
+  { title:"基础层强度不足", confidence:85, detail:"通过GPR探地雷达历史数据比对，该段路面下方基层存在松散迹象。", icon:"mdi:layers-triple" },
+  { title:"排水系统失效", confidence:72, detail:"病害集中在路缘石附近，推测雨水井排泄不畅导致长期浸泡。", icon:"mdi:waves" },
+  { title:"交通荷载超重", confidence:94, detail:"该路段为物流主通道，重型货车占比超过45%，超过设计承载。", icon:"mdi:truck-alert" },
+  { title:"材料老化与疲劳", confidence:60, detail:"沥青面层已达到使用年限，材料粘结力大幅度下降。", icon:"mdi:timer-sand" },
+  { title:"施工质量缺陷", confidence:45, detail:"局部坑槽分布规则，可能与初期铺设时的压实度不均有关。", icon:"mdi:alert-decagram" }
+];
+const maintenancePlans = [
+  { name:"夜间局部铣刨重铺", duration:"8 小时", impact:"中等", steps:["封闭施工车道","铣刨受损面层","清理并喷洒粘层油","摊铺新沥青混合料","碾压成型"], materials:["AC-13细粒式沥青","乳化沥青","铣刨机","压路机"] },
+  { name:"预防性微表处工艺", duration:"12 小时", impact:"低", steps:["路面清扫","裂缝密封处理","摊铺微表处混合料","初期养护"], materials:["改性乳化沥青","玄武岩集料","微表处摊铺机"] }
+];
+
+let currentRoad = roads[0];
+let pieChart = null;
+let map = null;
+const overlays = {};
+let showMilestones = false;
+const milestoneLabels = {};
+
+// ===== WGS84 → BD09 坐标转换 =====
+const pi = Math.PI;
+const a = 6378245.0;
+const ee = 0.00669342162296594323;
+function transformLat(x, y) {
+  let t = -100 + 2*x + 3*y + 0.2*y*y + 0.1*x*y + 0.2*Math.sqrt(Math.abs(x));
+  t += (20*Math.sin(6*x*pi) + 20*Math.sin(2*x*pi)) * 2/3;
+  t += (20*Math.sin(y*pi) + 40*Math.sin(y/3*pi)) * 2/3;
+  t += (160*Math.sin(y/12*pi) + 320*Math.sin(y*pi/30)) * 2/3;
+  return t;
+}
+function transformLng(x, y) {
+  let t = 300 + x + 2*y + 0.1*x*x + 0.1*x*y + 0.1*Math.sqrt(Math.abs(x));
+  t += (20*Math.sin(6*x*pi) + 20*Math.sin(2*x*pi)) * 2/3;
+  t += (20*Math.sin(x*pi) + 40*Math.sin(x/3*pi)) * 2/3;
+  t += (150*Math.sin(x/12*pi) + 300*Math.sin(x/30*pi)) * 2/3;
+  return t;
+}
+function wgs84ToGcj02(lat, lng) {
+  let dlat = transformLat(lng-105, lat-35), dlng = transformLng(lng-105, lat-35);
+  let rad = lat/180*pi, magic = Math.sin(rad);
+  magic = 1 - ee*magic*magic;
+  let sqrt = Math.sqrt(magic);
+  dlat = dlat*180 / ((a*(1-ee))/(magic*sqrt)*pi);
+  dlng = dlng*180 / (a/sqrt*Math.cos(rad)*pi);
+  return { lat: lat+dlat, lng: lng+dlng };
+}
+function gcj02ToBd09(lat, lng) {
+  const x = lng, y = lat;
+  const z = Math.sqrt(x*x + y*y) + 0.00002*Math.sin(y*pi);
+  const theta = Math.atan2(y, x) + 0.000003*Math.cos(x*pi);
+  return { lat: z*Math.sin(theta) + 0.006, lng: z*Math.cos(theta) + 0.0065 };
+}
+function wgs84ToBd09(lat, lng) {
+  const g = wgs84ToGcj02(lat, lng);
+  return gcj02ToBd09(g.lat, g.lng);
+}
+// ===== BD09 -> WGS84 逆变换（用于把地图路径规划返回的坐标还原存储）=====
+function bd09ToGcj02(lat, lng) {
+  const x = lng - 0.0065, y = lat - 0.006;
+  const z = Math.sqrt(x*x + y*y) - 0.00002 * Math.sin(y * Math.PI);
+  const theta = Math.atan2(y, x) - 0.000003 * Math.cos(x * Math.PI);
+  return { lat: z * Math.sin(theta), lng: z * Math.cos(theta) };
+}
+function gcj02ToWgs84(lat, lng) {
+  let dlat = transformLat(lng-105, lat-35), dlng = transformLng(lng-105, lat-35);
+  let rad = lat/180*pi, magic = Math.sin(rad);
+  magic = 1 - ee*magic*magic;
+  let sqrt = Math.sqrt(magic);
+  dlat = dlat*180 / ((a*(1-ee))/(magic*sqrt)*pi);
+  dlng = dlng*180 / (a/sqrt*Math.cos(rad)*pi);
+  return { lat: lat - dlat, lng: lng - dlng };
+}
+function bd09ToWgs84(lat, lng) {
+  const g = bd09ToGcj02(lat, lng);
+  return gcj02ToWgs84(g.lat, g.lng);
+}
+
+// ===== Haversine 距离计算 =====
+function haversine(a, b) {
+  const R = 6371000;
+  const dLat = (b[0]-a[0]) * Math.PI / 180;
+  const dLng = (b[1]-a[1]) * Math.PI / 180;
+  const lat1 = a[0] * Math.PI / 180;
+  const lat2 = b[0] * Math.PI / 180;
+  const x = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1-x));
+}
+
+// ===== 生成道路桩号 =====
+function generateMilestones(road) {
+  const coords = road.coords;
+  const n = coords.length;
+  if (n < 2) return;
+  const dist = [0];
+  for (let i = 1; i < n; i++) dist.push(dist[i-1] + haversine(coords[i-1], coords[i]));
+  const total = dist[n-1];
+  if (total < 200) return;
+  const interval = total > 8000 ? 1000 : total > 3000 ? 500 : 200;
+  const milestones = [];
+  for (let d = 0; d <= total + 1; d += interval) {
+    if (d > total) d = total;
+    let idx = 0;
+    while (idx < n-1 && dist[idx+1] < d) idx++;
+    const t = (d - dist[idx]) / (dist[idx+1] - dist[idx] || 1);
+    const lat = coords[idx][0] + (coords[idx+1][0] - coords[idx][0]) * t;
+    const lng = coords[idx][1] + (coords[idx+1][1] - coords[idx][1]) * t;
+    const dlng = coords[idx+1][1] - coords[idx][1];
+    const dlat = coords[idx+1][0] - coords[idx][0];
+    const len = Math.sqrt(dlng*dlng + dlat*dlat) || 1;
+    const nx = -dlat / len, ny = dlng / len;
+    const off = 0.0003;
+    const km = Math.floor(d / 1000);
+    const m = Math.round(d % 1000);
+    milestones.push({
+      up: { lat: lat + ny*off, lng: lng + nx*off },
+      down: { lat: lat - ny*off, lng: lng - nx*off },
+      label: `K${km}+${String(m).padStart(3,'0')}`
+    });
+    if (d >= total) break;
+  }
+  road.milestones = milestones;
+}
+
+// ===== 初始化百度地图 =====
+function showMapError(msg) {
+  const sec = document.getElementById('map-section');
+  if (!sec) return;
+  let b = document.getElementById('map-error-banner');
+  if (!b) { b = document.createElement('div'); b.id = 'map-error-banner'; b.className = 'absolute inset-0 flex items-center justify-center bg-slate-900/80 text-white text-sm p-4 text-center z-40'; sec.appendChild(b); }
+  b.innerText = msg;
+}
+function initMap() {
+  if (typeof BMap === 'undefined') { showMapError('百度地图 API 未加载成功（请检查网络连通性或百度地图 API Key 是否有效）。'); return; }
+  map = new BMap.Map('map-container', { enableMapClick: false });
+  const c = wgs84ToBd09(30.52, 114.37);
+  map.centerAndZoom(new BMap.Point(c.lng, c.lat), 13);
+  map.enableScrollWheelZoom();
+  // 缩放级别变化时按"逐段 / 总览"重新着色
+  map.addEventListener('zoomend', function () { try { redrawAllRoads(); } catch (e) { console.warn('zoomend 重绘跳过:', e); } });
+  roads.forEach(r => {
+    r.length = computeLength(r.coords);
+    ensureSegData(r);
+    generateMilestones(r);
+    drawRoad(r);
+    // 录入"基准快照", 供详情面板"重置"恢复为页面加载时的原始数据
+    r._original = JSON.parse(JSON.stringify({ name: r.name, coords: r.coords, diseases: r.diseases, segData: r.segData, pci: r.pci, area: r.area, risk: r.risk, length: r.length, isNew: r.isNew || false }));
+  });
+  // 自动缩放视野以容纳全部道路, 防止道路落在可视范围外而"看不见"
+  try {
+    const allPts = [];
+    roads.forEach(r => r.coords.forEach(c2 => { const b = wgs84ToBd09(c2[0], c2[1]); allPts.push(new BMap.Point(b.lng, b.lat)); }));
+    if (allPts.length) map.setViewport(allPts);
+  } catch (e) { console.warn('setViewport 跳过:', e); }
+  map.addEventListener('click', function (e) {
+    if (!pickActive || !e.point) return;
+    const w = bd09ToWgs84(e.point.lat, e.point.lng);
+    pickPoints.push([w.lat, w.lng]);
+    dropPickMarker(pickPoints.length - 1, e.point);
+    updatePickBanner();
+  });
+  selectRoad(roads[0].name);
+}
+
+// ===== 绘制道路（按真实病害严重度分段着色）=====
+const DETAIL_ZOOM = 14;   // >= 此缩放级别显示逐段颜色; 更低为总览(整段按总体 PCI 上色)
+// 清除某道路在地图上的全部覆盖物(逐段折线 + 桩号标注)
+function removeRoadOverlays(name) {
+  if (overlays[name]) { overlays[name].forEach(p => { try { map.removeOverlay(p); } catch (e) {} }); delete overlays[name]; }
+  if (milestoneLabels[name]) { milestoneLabels[name].forEach(l => { try { map.removeOverlay(l); } catch (e) {} }); delete milestoneLabels[name]; }
+}
+// 统一重绘入口: 依据当前地图缩放级别决定"逐段细化"或"整段总览"
+function drawRoad(road) {
+  if (!map || !road) return;
+  removeRoadOverlays(road.name);
+  if (map.getZoom() >= DETAIL_ZOOM) drawRoadSegments(road);
+  else drawRoadOverview(road);
+  // 重绘后保持当前选中道路的高亮
+  if (currentRoad && road.name === currentRoad.name && overlays[road.name]) {
+    overlays[road.name].forEach(p => { p.setStrokeWeight(10); p.setStrokeOpacity(1); });
+  }
+}
+// 放大态: 逐段上色, 颜色由该段 PCI 决定(细化分离每段); 连续段之间确保坐标首尾相接
+function drawRoadSegments(road) {
+  const segs = road.segData || [];
+  const polylines = [];
+  if (!segs.length) return;
+  // 预计算所有段的原始坐标, 并在相邻连续段之间强制共用边界点(消除浮点间隙)
+  const EPS = 0.5; // 桩号差值小于此视为"连续"
+  const allSegCoords = segs.map(seg => segmentCoords(road.coords, seg.startM, seg.endM));
+  for (let i = 0; i < allSegCoords.length - 1; i++) {
+    const cur = allSegCoords[i];
+    const nxt = allSegCoords[i + 1];
+    if (!cur || !nxt || !cur.length || !nxt.length) continue;
+    const curEndM = segs[i].endM || 0;
+    const nxtStartM = segs[i + 1].startM || 0;
+    if (Math.abs(curEndM - nxtStartM) <= EPS && cur.length >= 2) {
+      // 连续段: 下一段的起点强制使用上一段的终点坐标(精确复用, 无浮点误差)
+      const sharedPt = cur[cur.length - 1];
+      if (nxt.length > 0) nxt[0] = [sharedPt[0], sharedPt[1]];
+      else nxt.push([sharedPt[0], sharedPt[1]]);
+    }
+  }
+  // 逐段绘制彩色折线
+  allSegCoords.forEach((coords, si) => {
+    if (!coords || coords.length < 2) return;
+    const pts = coords.map(c => { const b = wgs84ToBd09(c[0], c[1]); return new BMap.Point(b.lng, b.lat); });
+    const color = getPciColor(segs[si].pci, 'hex');
+    const polyline = new BMap.Polyline(pts, {
+      strokeColor: color, strokeWeight: 6, strokeOpacity: 0.92, strokeStyle: 'solid'
+    });
+    const status = segs[si].pci >= 90 ? '优' : segs[si].pci >= 75 ? '良' : segs[si].pci >= 60 ? '中' : '差';
+    const info = `桩号 K${(segs[si].startM/1000).toFixed(3)}~K${(segs[si].endM/1000).toFixed(3)} | PCI ${segs[si].pci} [${status}]`;
+    polyline.addEventListener('mouseover', function() {
+      this.setStrokeWeight(10); this.setStrokeOpacity(1);
+      const lbl = new BMap.Label(`${road.name} | ${info}`, {
+        position: pts[Math.floor(pts.length/2)], offset: new BMap.Size(0, -22)
+      });
+      lbl.setStyle({background:'#1a3a5c',color:'#fff',fontSize:'12px',fontWeight:'600',padding:'4px 10px',borderRadius:'4px',border:'none',boxShadow:'0 2px 8px rgba(0,0,0,0.2)'});
+      this._lbl = lbl; map.addOverlay(lbl);
+    });
+    polyline.addEventListener('mouseout', function() {
+      this.setStrokeWeight(6); this.setStrokeOpacity(0.9);
+      if (this._lbl) { map.removeOverlay(this._lbl); this._lbl = null; }
+    });
+    polyline.addEventListener('click', () => selectRoad(road.name));
+    map.addOverlay(polyline);
+    polylines.push(polyline);
+    if (si === 0) {
+      const mid = pts[Math.floor(pts.length/2)];
+      const lbl = new BMap.Label(road.name, { position: mid, offset: new BMap.Size(0, 14) });
+      lbl.setStyle({background:'rgba(255,255,255,0.92)',border:'none',borderRadius:'3px',padding:'1px 6px',fontSize:'11px',fontWeight:'600',color:'#475569',boxShadow:'0 1px 3px rgba(0,0,0,0.12)'});
+      map.addOverlay(lbl);
+    }
+  });
+  overlays[road.name] = polylines;
+  drawRoadMilestones(road);
+}
+// 缩小总览态: 整条道路按"总体 PCI"单一颜色绘制, 不分离各段
+function drawRoadOverview(road) {
+  if (!road.coords || road.coords.length < 2) return;
+  const pts = road.coords.map(c => { const b = wgs84ToBd09(c[0], c[1]); return new BMap.Point(b.lng, b.lat); });
+  const color = getPciColor(road.pci, 'hex');
+  const polyline = new BMap.Polyline(pts, {
+    strokeColor: color, strokeWeight: 6, strokeOpacity: 0.95, strokeStyle: 'solid'
+  });
+  const status = road.pci >= 90 ? '优' : road.pci >= 75 ? '良' : road.pci >= 60 ? '中' : '差';
+  polyline.addEventListener('mouseover', function() {
+    this.setStrokeWeight(10); this.setStrokeOpacity(1);
+    const lbl = new BMap.Label(`${road.name} | 总体 PCI ${road.pci} [${status}]`, {
+      position: pts[Math.floor(pts.length/2)], offset: new BMap.Size(0, -22)
+    });
+    lbl.setStyle({background:'#1a3a5c',color:'#fff',fontSize:'12px',fontWeight:'600',padding:'4px 10px',borderRadius:'4px',border:'none',boxShadow:'0 2px 8px rgba(0,0,0,0.2)'});
+    this._lbl = lbl; map.addOverlay(lbl);
+  });
+  polyline.addEventListener('mouseout', function() {
+    this.setStrokeWeight(6); this.setStrokeOpacity(0.95);
+    if (this._lbl) { map.removeOverlay(this._lbl); this._lbl = null; }
+  });
+  polyline.addEventListener('click', () => selectRoad(road.name));
+  map.addOverlay(polyline);
+  overlays[road.name] = [polyline];
+}
+// 地图缩放级别变化时统一重绘所有道路(在 逐段 / 总览 着色间切换)
+function redrawAllRoads() {
+  if (!map) return;
+  roads.forEach(r => drawRoad(r));
+}
+
+// ===== 绘制桩号标注 =====
+function drawRoadMilestones(road) {
+  if (!road.milestones) return;
+  const labels = [];
+  road.milestones.forEach(ms => {
+    const upBd = wgs84ToBd09(ms.up.lat, ms.up.lng);
+    const downBd = wgs84ToBd09(ms.down.lat, ms.down.lng);
+    const up = new BMap.Label(`↑${ms.label}`, {
+      position: new BMap.Point(upBd.lng, upBd.lat),
+      offset: new BMap.Size(-26, -9)
+    });
+    up.setStyle({background:'rgba(255,255,255,0.85)',border:'1px solid rgba(0,0,0,0.2)',borderRadius:'3px',padding:'1px 4px',fontSize:'11px',fontWeight:'600',color:'#1a3a5c',whiteSpace:'nowrap'});
+    const down = new BMap.Label(`↓${ms.label}`, {
+      position: new BMap.Point(downBd.lng, downBd.lat),
+      offset: new BMap.Size(-26, 3)
+    });
+    down.setStyle({background:'rgba(255,255,255,0.85)',border:'1px solid rgba(0,0,0,0.2)',borderRadius:'3px',padding:'1px 4px',fontSize:'11px',fontWeight:'600',color:'#6b7280',whiteSpace:'nowrap'});
+    labels.push(up, down);
+  });
+  milestoneLabels[road.name] = labels;
+}
+
+function getPciColor(pci, type) {
+  if (pci >= 90) return type === 'hex' ? '#22c55e' : 'bg-green-500';
+  if (pci >= 75) return type === 'hex' ? '#eab308' : 'bg-yellow-400';
+  if (pci >= 60) return type === 'hex' ? '#f97316' : 'bg-orange-500';
+  return type === 'hex' ? '#ef4444' : 'bg-red-600';
+}
+
+function selectRoad(name) {
+  if (pickActive) return;
+  if (currentRoad) {
+    const el = document.getElementById(`list-item-${currentRoad.name}`);
+    if (el) el.classList.remove('bg-slate-700','text-white');
+  }
+  currentRoad = roads.find(r => r.name === name);
+  if (!currentRoad) return;
+  Object.values(overlays).forEach(arr => { arr.forEach(p => { p.setStrokeWeight(6); p.setStrokeOpacity(0.85); }); });
+  if (overlays[name]) { overlays[name].forEach(p => { p.setStrokeWeight(10); p.setStrokeOpacity(1); }); }
+  const li = document.getElementById(`list-item-${currentRoad.name}`);
+  if (li) li.classList.add('bg-slate-700','text-white');
+  document.getElementById('current-road-title').innerHTML = currentRoad.name + (currentRoad.fromReport ? ' <span class="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 align-middle">报告自动分析</span>' : '');
+  document.getElementById('road-id-tag').innerText = `ID: ${currentRoad.id}`;
+  document.getElementById('stat-pci').innerText = currentRoad.pci;
+  document.getElementById('stat-area').innerText = currentRoad.area;
+  const lenEl = document.getElementById('stat-length');
+  if (lenEl) lenEl.innerText = currentRoad.length != null ? currentRoad.length.toLocaleString() : '—';
+  const risk = document.getElementById('stat-risk');
+  risk.innerText = currentRoad.risk;
+  risk.className = `text-lg font-bold px-4 py-1 rounded-full ${currentRoad.pci < 60 ? 'bg-red-100 text-red-700' : currentRoad.pci < 75 ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'}`;
+  updateCharts(); updateDiseaseCards(); updateAiAnalysis(); updateMaintenancePlans();
+  const pts = currentRoad.coords.map(c => { const b = wgs84ToBd09(c[0], c[1]); return new BMap.Point(b.lng, b.lat); });
+  const view = map.getViewport(pts);
+  map.centerAndZoom(view.center, Math.max(view.zoom, 14));
+}
+
+function renderRoadList() {
+  const list = document.getElementById('road-list');
+  list.innerHTML = '';
+  roads.forEach(r => {
+    const d = document.createElement('div');
+    d.className = `px-4 py-2 text-sm cursor-pointer rounded hover:bg-slate-700 transition-colors flex justify-between items-center group ${currentRoad.name===r.name?'bg-slate-700 text-white':''}`;
+    d.onclick = () => selectRoad(r.name);
+    d.innerHTML = `<span>${r.name}</span><span class="text-[10px] px-1.5 py-0.5 rounded ${getPciColor(r.pci,'bg')} text-white opacity-80 group-hover:opacity-100">${r.pci}</span>`;
+    d.id = `list-item-${r.name}`; list.appendChild(d);
+  });
+}
+
+function initPieChart() {
+  if (typeof echarts === 'undefined') { console.warn('echarts 未加载, 跳过饼图'); return; }
+  try { pieChart = echarts.init(document.getElementById('disease-pie-chart')); updateCharts(); }
+  catch (e) { console.error('饼图初始化失败:', e); }
+}
+
+function updateCharts() {
+  if (!pieChart) return;
+  pieChart.setOption({
+    tooltip:{trigger:'item',formatter:'{b}: {c}%'},
+    series:[{type:'pie',radius:['45%','75%'],avoidLabelOverlap:false,itemStyle:{borderRadius:8,borderColor:'#fff',borderWidth:2},label:{show:false},emphasis:{label:{show:true,fontSize:14,fontWeight:'bold'}},data:[
+      {value:currentRoad.diseases.cracks,name:'裂缝',itemStyle:{color:'#3b82f6'}},
+      {value:currentRoad.diseases.potholes,name:'坑槽',itemStyle:{color:'#ef4444'}},
+      {value:currentRoad.diseases.rutting,name:'车辙',itemStyle:{color:'#f59e0b'}},
+      {value:currentRoad.diseases.subsidence,name:'沉陷',itemStyle:{color:'#8b5cf6'}},
+      {value:currentRoad.diseases.others,name:'其他',itemStyle:{color:'#94a3b8'}}
+    ]}]
+  });
+}
+
+function updateDiseaseCards() {
+  const c = document.getElementById('disease-cards');
+  c.innerHTML = '';
+  [{n:'裂缝',k:'cracks',i:'mdi:VectorPolyline',cl:'text-blue-500'},{n:'坑槽',k:'potholes',i:'mdi:VectorRectangle',cl:'text-red-500'},{n:'车辙',k:'rutting',i:'mdi:ChartTimelineVariant',cl:'text-yellow-600'},{n:'沉陷',k:'subsidence',i:'mdi:ArrowDownBoldBox',cl:'text-purple-500'}].forEach(t=>{
+    const v=currentRoad.diseases[t.k], s=v>30?'重度':v>15?'中度':'轻度', sc=v>30?'text-red-600':v>15?'text-orange-500':'text-green-600';
+    c.innerHTML+=`<div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm"><div class="flex justify-between items-start mb-2"><iconify-icon icon="${t.i}" class="${t.cl} text-xl"></iconify-icon><span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 ${sc}">${s}</span></div><div class="text-slate-500 text-xs">${t.n}占比</div><div class="text-xl font-bold text-gov-dark">${v}%</div><div class="mt-2 w-full bg-slate-100 h-1 rounded-full overflow-hidden"><div class="h-full ${t.cl.replace('text','bg')}" style="width:${v}%"></div></div></div>`;
+  });
+}
+
+function updateAiAnalysis() {
+  const c = document.getElementById('ai-analysis-container');
+  const items = [...aiReasons].sort(()=>0.5-Math.random()).slice(0,3);
+  c.innerHTML = items.map(r=>`<div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-blue-300 transition-all"><div class="flex items-center justify-between mb-3"><div class="flex items-center space-x-2"><div class="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600"><iconify-icon icon="${r.icon}" class="text-xl"></iconify-icon></div><span class="font-bold text-gov-dark">${r.title}</span></div><span class="text-xs font-bold text-blue-600">${r.confidence}% 可信度</span></div><p class="text-xs text-slate-600 leading-relaxed mb-3">${r.detail}</p><div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden"><div class="h-full bg-blue-500" style="width:${r.confidence}%"></div></div></div>`).join('');
+  document.getElementById('suggested-tests').innerHTML = ['探地雷达检测','钻芯取样','弯沉测试','平整度扫描'].map(t=>`<span class="px-3 py-1 bg-white border border-slate-300 rounded-full text-xs text-slate-600 flex items-center"><iconify-icon icon="mdi:check-circle" class="mr-1 text-green-500"></iconify-icon> ${t}</span>`).join('');
+}
+
+function updateMaintenancePlans() {
+  document.getElementById('maintenance-plan-list').innerHTML = maintenancePlans.map((p,i)=>`<div class="p-4 rounded-xl border transition-all cursor-pointer ${i===0?'bg-blue-50 border-blue-200':'bg-white border-slate-200 opacity-70'}"><div class="flex justify-between items-start mb-2"><h4 class="font-bold text-gov-dark">${p.name}</h4><span class="text-[10px] px-2 py-0.5 rounded-full ${p.impact==='低'?'bg-green-100 text-green-700':'bg-yellow-100 text-yellow-700'}">${p.impact}交通影响</span></div><div class="flex space-x-4 mb-3 text-xs text-slate-500"><span class="flex items-center"><iconify-icon icon="mdi:clock-outline" class="mr-1"></iconify-icon> 工期: ${p.duration}</span><span class="flex items-center"><iconify-icon icon="mdi:tools" class="mr-1"></iconify-icon> 步骤: ${p.steps.length}步</span></div><div class="flex flex-wrap gap-1">${p.materials.map(m=>`<span class="text-[9px] bg-slate-200 px-1.5 py-0.5 rounded">${m}</span>`).join('')}</div></div>`).join('');
+}
+
+function switchTab(idx) {
+  for(let i=1;i<=3;i++){document.getElementById(`tab-content-${i}`).classList.add('hidden');document.getElementById(`tab-btn-${i}`).classList.remove('tab-active');document.getElementById(`tab-btn-${i}`).classList.add('text-slate-500');}
+  document.getElementById(`tab-content-${idx}`).classList.remove('hidden');
+  document.getElementById(`tab-btn-${idx}`).classList.add('tab-active');
+  document.getElementById(`tab-btn-${idx}`).classList.remove('text-slate-500');
+  if(idx===1&&pieChart) setTimeout(()=>pieChart.resize(),0);
+}
+
+let panelVisible = true;
+function togglePanel() {
+  panelVisible = !panelVisible;
+  const panel = document.getElementById('bottom-panel');
+  const icon = document.getElementById('panel-toggle-icon');
+  const mapSection = document.getElementById('map-section');
+  if (panelVisible) {
+    panel.style.height = '45%';
+    mapSection.style.height = '55%';
+    icon.classList.remove('rotate-180');
+  } else {
+    panel.style.height = '0';
+    mapSection.style.height = '100%';
+    icon.classList.add('rotate-180');
+  }
+}
+function toggleMilestones() {
+  showMilestones = !showMilestones;
+  const btn = document.getElementById('mile-btn');
+  Object.values(milestoneLabels).flat().forEach(lbl => {
+    if (showMilestones) map.addOverlay(lbl); else map.removeOverlay(lbl);
+  });
+  btn.style.background = showMilestones ? '#e2e8f0' : '';
+  btn.style.borderRadius = '0.25rem';
+}
+// ===== 新增道路录入逻辑 =====
+let roadCounter = roads.length;
+// ===== 地图拾取模式 =====
+let pickActive = false;
+let pickPoints = [];          // 顺序点集(临时): [起点, 途经点..., 终点] (WGS84)
+let pendingPickRoute = null;  // 点选完成后"已提交"的路线点集, 供 addRoad 使用(跨 openRoadModal 保留)
+const pickMarkers = {};       // index -> BMap.Marker
+function dropPickMarker(index, pt) {
+  const isFirst = index === 0;
+  const isLast = index === pickPoints.length - 1;
+  const tag = isFirst ? '起点' : (isLast ? '终点' : '途经点' + index);
+  const color = isFirst ? '#16a34a' : (isLast ? '#dc2626' : '#2563eb');
+  const m = new BMap.Marker(pt);
+  const label = new BMap.Label(tag, { offset: new BMap.Size(12, -10) });
+  label.setStyle({ background: color, color: '#fff', fontSize: '11px', fontWeight: '600', padding: '1px 6px', border: 'none', borderRadius: '3px' });
+  m.setLabel(label);
+  map.addOverlay(m);
+  pickMarkers[index] = m;
+}
+function clearPickMarkers() {
+  Object.values(pickMarkers).forEach(m => { try { map.removeOverlay(m); } catch (e) {} });
+  for (const k in pickMarkers) delete pickMarkers[k];
+  pickPoints = [];
+}
+function updatePickBanner() {
+  const t = document.getElementById('pick-text');
+  const n = pickPoints.length;
+  if (n === 0) t.innerText = '地图拾取：点击地图选择【起点】';
+  else if (n === 1) t.innerText = '已选起点，点击地图继续添加【途经点 / 终点】';
+  else t.innerText = '已选 ' + n + ' 个点，可继续添加途经点，或点“完成”以最后一点为终点';
+}
+function renderPickWaypoints() {
+  const el = document.getElementById('waypoint-list');
+  if (!el) return;
+  const pts = (pendingPickRoute && pendingPickRoute.length) ? pendingPickRoute : pickPoints;
+  if (!pts.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  el.classList.remove('hidden');
+  el.innerHTML = '<div class="font-semibold text-blue-700">已选路线点（' + pts.length + ' 个）</div>' +
+    pts.map((p, i) => {
+      const tag = i === 0 ? '起点' : (i === pts.length - 1 ? '终点' : '途经点' + i);
+      return '<div class="flex justify-between gap-3"><span class="text-blue-600">' + tag + '</span><span class="text-slate-500">[' + p[0].toFixed(5) + ', ' + p[1].toFixed(5) + ']</span></div>';
+    }).join('');
+}
+function startPick() {
+  clearPickMarkers();
+  pendingPickRoute = null;
+  closeRoadModal();
+  pickActive = true;
+  document.getElementById('map-container').style.cursor = 'crosshair';
+  document.getElementById('pick-banner').classList.remove('hidden');
+  updatePickBanner();
+}
+function finishPick() {
+  pickActive = false;
+  document.getElementById('map-container').style.cursor = '';
+  document.getElementById('pick-banner').classList.add('hidden');
+  pendingPickRoute = pickPoints.length >= 1 ? pickPoints.slice() : null;
+  if (pendingPickRoute) {
+    const first = pickPoints[0], last = pickPoints[pickPoints.length - 1];
+    document.getElementById('f-slat').value = first[0].toFixed(5);
+    document.getElementById('f-slng').value = first[1].toFixed(5);
+    document.getElementById('f-elat').value = last[0].toFixed(5);
+    document.getElementById('f-elng').value = last[1].toFixed(5);
+  } else {
+    ['f-slat', 'f-slng', 'f-elat', 'f-elng'].forEach(id => { document.getElementById(id).value = ''; });
+  }
+  renderPickWaypoints();
+  // 地图点选后默认使用"沿点连线"模式, 折线严格经过每个途经点
+  if (pendingPickRoute && pendingPickRoute.length >= 2) {
+    document.getElementById('f-mode').value = 'through';
+  }
+  openRoadModal();
+}
+function cancelPick() {
+  pickActive = false;
+  document.getElementById('map-container').style.cursor = '';
+  document.getElementById('pick-banner').classList.add('hidden');
+  clearPickMarkers();
+  pendingPickRoute = null;
+  renderPickWaypoints();
+  openRoadModal();
+}
+function undoPick() {
+  if (!pickPoints.length) return;
+  const idx = pickPoints.length - 1;
+  pickPoints.pop();
+  if (pickMarkers[idx]) { try { map.removeOverlay(pickMarkers[idx]); } catch (e) {} delete pickMarkers[idx]; }
+  updatePickBanner();
+  renderPickWaypoints();
+}
+function clearPick() {
+  clearPickMarkers();
+  pendingPickRoute = null;
+  renderPickWaypoints();
+  updatePickBanner();
+}
+function clearPickAfterSubmit() {
+  // 仅清理临时点集与标记; 已提交的 pendingPickRoute 保留至 addRoad 消费(或下次 startPick 清空)
+  pickPoints = [];
+  for (const k in pickMarkers) { try { map.removeOverlay(pickMarkers[k]); } catch (e) {} delete pickMarkers[k]; }
+  renderPickWaypoints();
+}
+let editingRoad = null;
+function startAddRoad() {
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-pci').value = 80;
+  document.getElementById('f-area').value = 200;
+  ['f-slat','f-slng','f-elat','f-elng'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('f-input-mode').value = 'unified';
+  ['cracks','potholes','rutting','subsidence','others'].forEach(k => { const el = document.getElementById('f-'+k); if (el) el.value = 0; });
+  pendingSegData = []; pendingReportSummary = null; pendingReportLoaded = false;
+  // 清空上一次地图拾取的路线点
+  pickPoints = []; pendingPickRoute = null;
+  for (const k in pickMarkers) { try { map.removeOverlay(pickMarkers[k]); } catch (e) {} delete pickMarkers[k]; }
+  renderPickWaypoints();
+  openRoadModal();
+}
+function editCurrentRoad() { if (currentRoad) openRoadModal(currentRoad); }
+function resetCurrentRoad() { if (currentRoad) resetRoad(currentRoad.name); }
+function resetRoad(name) {
+  const road = roads.find(r => r.name === name);
+  if (!road) return;
+  if (!road._original) { alert('该道路无原始数据可重置'); return; }
+  if (!confirm('确定将「' + name + '」的病害数据重置为原始状态？')) return;
+  const o = JSON.parse(JSON.stringify(road._original));
+  if (overlays[road.name]) { overlays[road.name].forEach(p => { try { map.removeOverlay(p); } catch (e) {} }); delete overlays[road.name]; }
+  road.coords = o.coords; road.diseases = o.diseases; road.segData = o.segData;
+  road.pci = o.pci; road.area = o.area; road.risk = o.risk; road.length = o.length; road.isNew = o.isNew;
+  road.name = o.name;
+  generateMilestones(road); drawRoad(road);
+  renderRoadList();
+  if (currentRoad && currentRoad.name === road.name) selectRoad(road.name);
+  runDeepSeek();
+  saveRoadsData(); // 持久化: 重置后
+}
+function openRoadModal(road) {
+  editingRoad = road || null;
+  // 进入弹窗时清理可能残留的拾取点标记(避免上一次点选的途经点影响本次录入)
+  clearPickAfterSubmit();
+  const err = document.getElementById('modal-error'); if (err) err.classList.add('hidden');
+  const keys = ['cracks','potholes','rutting','subsidence','others'];
+  const title = document.getElementById('modal-title');
+  const saveBtn = document.getElementById('addRoadBtn');
+  if (editingRoad) {
+    title.innerHTML = '<iconify-icon icon="mdi:road-edit" class="mr-2 text-xl"></iconify-icon> 修改道路病害数据';
+    saveBtn.innerHTML = '<iconify-icon icon="mdi:content-save-edit" class="text-base"></iconify-icon><span>保存修改</span>';
+  } else {
+    title.innerHTML = '<iconify-icon icon="mdi:road-plus" class="mr-2 text-xl"></iconify-icon> 新增道路病害数据';
+    saveBtn.innerHTML = '<iconify-icon icon="mdi:content-save-check" class="text-base"></iconify-icon><span>保存并生成分析</span>';
+  }
+  const co = editingRoad ? (editingRoad.coords || []) : [];
+  if (editingRoad) {
+    document.getElementById('f-name').value = editingRoad.name;
+    document.getElementById('f-pci').value = editingRoad.pci;
+    document.getElementById('f-area').value = editingRoad.area;
+    document.getElementById('f-slat').value = co.length ? co[0][0].toFixed(5) : '';
+    document.getElementById('f-slng').value = co.length ? co[0][1].toFixed(5) : '';
+    document.getElementById('f-elat').value = co.length ? co[co.length-1][0].toFixed(5) : '';
+    document.getElementById('f-elng').value = co.length ? co[co.length-1][1].toFixed(5) : '';
+    const seg = editingRoad.segData || [];
+    const useSeg = seg.length > 1;
+    document.getElementById('f-input-mode').value = useSeg ? 'segmented' : 'unified';
+    pendingSegData = [];
+    if (useSeg) {
+      pendingSegData = seg.map(s => ({ startM: s.startM, endM: s.endM, diseases: Object.assign({}, s.diseases) }));
+    } else {
+      const d = editingRoad.diseases || {};
+      keys.forEach(k => { const el = document.getElementById('f-'+k); if (el) el.value = (d[k] != null ? d[k] : 0); });
+    }
+  }
+  // 新增模式(无 road)不清空字段, 以保留"地图拾取"已填入的起终点
+  toggleInputMode();
+  if (document.getElementById('f-input-mode').value === 'segmented') renderSegRows();
+  updateDiseaseSum();
+  document.getElementById('road-modal').classList.remove('hidden');
+}
+function closeRoadModal() {
+  document.getElementById('road-modal').classList.add('hidden');
+}
+function updateDiseaseSum() {
+  const keys = ['cracks','potholes','rutting','subsidence','others'];
+  let sum = 0;
+  keys.forEach(k => { sum += (+document.getElementById('f-'+k).value || 0); });
+  const el = document.getElementById('disease-sum');
+  el.innerText = '合计 ' + sum + '%';
+  el.className = 'text-xs font-semibold px-2 py-0.5 rounded-full ' + (Math.round(sum) === 100 ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600');
+}
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+function pciToRisk(pci) {
+  if (pci >= 90) return '低风险';
+  if (pci >= 75) return '中风险';
+  if (pci >= 60) return '高风险';
+  return '极高风险';
+}
+function makeStraightCoords(lat, lng) {
+  const n = 6, dLat = 0.0055, dLng = 0.0075;
+  const pts = [];
+  for (let i = 0; i < n; i++) pts.push([lat + dLat * i, lng + dLng * i]);
+  return pts;
+}
+function makeStraightCoordsBetween(a, b) {
+  const dist = haversine(a, b);
+  const n = Math.max(4, Math.min(60, Math.round(dist / 80) + 4));
+  const pts = [];
+  for (let i = 0; i <= n; i++) pts.push([a[0] + (b[0]-a[0]) * i / n, a[1] + (b[1]-a[1]) * i / n]);
+  return pts;
+}
+// 串联多个途经点: 每段直线插值并拼接为整条道路坐标(避免连接点重复)
+function makeStraightCoordsThrough(points) {
+  if (!points || points.length < 2) return points && points.length ? [[points[0][0], points[0][1]]] : [];
+  const all = [];
+  for (let i = 0; i < points.length - 1; i++) {
+    const seg = makeStraightCoordsBetween(points[i], points[i + 1]);
+    if (i > 0 && seg.length) seg.shift();
+    seg.forEach(p => all.push(p));
+  }
+  return all;
+}
+function computeLength(coords) {
+  if (!coords || coords.length < 2) return 0;
+  let total = 0;
+  for (let i = 1; i < coords.length; i++) total += haversine(coords[i-1], coords[i]);
+  return Math.round(total);
+}
+function genRoadId() { roadCounter++; return 'WH-RD-' + String(roadCounter).padStart(3, '0'); }
+// 调用百度地图路径规划, 返回贴合真实道路的 WGS84 坐标序列; waypoints 为中间途经点(WGS84)
+function planRoute(startWgs84, endWgs84, mode, waypoints) {
+  return new Promise((resolve, reject) => {
+    if (typeof BMap === 'undefined' || !map) { reject(new Error('地图未就绪')); return; }
+    const sBd = wgs84ToBd09(startWgs84[0], startWgs84[1]);
+    const eBd = wgs84ToBd09(endWgs84[0], endWgs84[1]);
+    const sp = new BMap.Point(sBd.lng, sBd.lat);
+    const ep = new BMap.Point(eBd.lng, eBd.lat);
+    const wpPts = (waypoints && waypoints.length) ? waypoints.map(w => { const b = wgs84ToBd09(w[0], w[1]); return new BMap.Point(b.lng, b.lat); }) : [];
+    const opts = { onSearchComplete: function (results) {
+      try {
+        if (R.getStatus && R.getStatus() !== 0) { reject(new Error('路径规划状态码 ' + R.getStatus())); return; }
+        const plan = results && results.getPlan ? results.getPlan(0) : null;
+        if (!plan) { reject(new Error('未找到可行路线')); return; }
+        const route = plan.getRoute(0);
+        const path = route && route.getPath ? route.getPath() : [];
+        if (!path || path.length < 2) { reject(new Error('路线坐标点不足')); return; }
+        const wgs = path.map(p => { const w = bd09ToWgs84(p.lat, p.lng); return [w.lat, w.lng]; });
+        resolve(wgs);
+      } catch (e) { reject(e); }
+    } };
+    let R;
+    if (mode === 'walking') R = new BMap.WalkingRoute(map, opts);
+    else if (mode === 'riding') R = new BMap.RidingRoute(map, opts);
+    else R = new BMap.DrivingRoute(map, opts);
+    if (wpPts.length) R.search(sp, ep, { waypoints: wpPts });
+    else R.search(sp, ep);
+  });
+}
+// ===== 分段录入 / 报告读取 =====
+let pendingSegData = [];
+let pendingReportSummary = null;   // 报告仅含"整体病害摘要"时暂存, 用于自动分配各段比例
+let pendingReportLoaded = false;   // 任意报告(整体摘要/逐段)已读取, 用于判别"来自报告"的道路
+function toggleInputMode() {
+  const m = document.getElementById('f-input-mode').value;
+  document.getElementById('unified-wrap').classList.toggle('hidden', m !== 'unified');
+  document.getElementById('seg-wrap').classList.toggle('hidden', m !== 'segmented');
+  const note = document.getElementById('report-auto-note'); if (note) note.classList.add('hidden');
+  if (m === 'segmented' && pendingSegData.length === 0) addSegRow();
+}
+function renderSegRows() {
+  const tb = document.getElementById('seg-rows');
+  if (!pendingSegData.length) { tb.innerHTML = '<tr><td colspan="8" class="text-slate-400 text-center py-2">暂无分段，点“添加分段”或上传报告</td></tr>'; return; }
+  tb.innerHTML = pendingSegData.map((s, i) => `<tr>
+    <td><input class="form-input !py-1 text-center" type="number" value="${s.startM}" onchange="updSeg(${i},'startM',this.value)"></td>
+    <td><input class="form-input !py-1 text-center" type="number" value="${s.endM}" onchange="updSeg(${i},'endM',this.value)"></td>
+    <td><input class="form-input !py-1 text-center" type="number" value="${s.diseases.cracks}" onchange="updSegD(${i},'cracks',this.value)"></td>
+    <td><input class="form-input !py-1 text-center" type="number" value="${s.diseases.potholes}" onchange="updSegD(${i},'potholes',this.value)"></td>
+    <td><input class="form-input !py-1 text-center" type="number" value="${s.diseases.rutting}" onchange="updSegD(${i},'rutting',this.value)"></td>
+    <td><input class="form-input !py-1 text-center" type="number" value="${s.diseases.subsidence}" onchange="updSegD(${i},'subsidence',this.value)"></td>
+    <td><input class="form-input !py-1 text-center" type="number" value="${s.diseases.others}" onchange="updSegD(${i},'others',this.value)"></td>
+    <td><button type="button" onclick="delSeg(${i})" class="text-red-500 px-1"><iconify-icon icon="mdi:delete"></iconify-icon></button></td>
+  </tr>`).join('');
+}
+function addSegRow() {
+  const last = pendingSegData.length ? pendingSegData[pendingSegData.length-1].endM : 0;
+  pendingSegData.push({ startM: last, endM: last + 200, diseases: { cracks:20, potholes:20, rutting:20, subsidence:20, others:20 } });
+  renderSegRows();
+}
+function delSeg(i) { pendingSegData.splice(i, 1); renderSegRows(); }
+function updSeg(i, k, v) { pendingSegData[i][k] = Math.max(0, parseFloat(v) || 0); }
+function updSegD(i, k, v) { pendingSegData[i].diseases[k] = Math.max(0, parseFloat(v) || 0); }
+function autoSegRows() {
+  const sLat = parseFloat(document.getElementById('f-slat').value);
+  const sLng = parseFloat(document.getElementById('f-slng').value);
+  const eLat = parseFloat(document.getElementById('f-elat').value);
+  const eLng = parseFloat(document.getElementById('f-elng').value);
+  let dist = 2000;
+  if (!isNaN(sLat) && !isNaN(sLng) && !isNaN(eLat) && !isNaN(eLng)) dist = haversine([sLat, sLng], [eLat, eLng]);
+  const n = Math.max(1, Math.round(dist / 20));
+  pendingSegData = [];
+  for (let i = 0; i < n; i++) pendingSegData.push({ startM: i*20, endM: (i+1)*20, diseases: { cracks:20, potholes:20, rutting:20, subsidence:20, others:20 } });
+  renderSegRows();
+}
+// 由目标 PCI 反推各病害强度: 保持整体构成比例, 强度按负荷缩放, 使 pciFromDiseases(结果)≈目标
+function diseasesFromPci(pci, comp) {
+  // 与新 pciFromDiseases 模型一致的反向函数:
+  // pci = 100 - pow(S/100, 0.75)*75 => 反解 S = 100 * ((100-pci)/75)^(4/3)
+  const w = { cracks: 0.28, potholes: 0.22, rutting: 0.18, subsidence: 0.22, others: 0.10 };
+  const ratio = Math.max(0, (100 - pci) / 75);
+  const S = 100 * Math.pow(ratio, 4/3);
+  let cw = 0; for (const k in w) cw += (comp[k] || 0) * w[k];
+  if (cw <= 0) { comp = { cracks:1, potholes:1, rutting:1, subsidence:1, others:1 }; cw = Object.values(w).reduce((a,b)=>a+b,0); }
+  const d = {};
+  for (const k in w) d[k] = Math.max(0, Math.min(100, Math.round((S / cw) * (comp[k] || 0))));
+  return d;
+}
+function renumberSegs(segs) {
+  let cursor = 0;
+  segs.forEach(s => { const len = Math.max(1, s.endM - s.startM); s.startM = Math.round(cursor); s.endM = Math.round(cursor + len); cursor += len; });
+}
+// 从文本中提取"整体病害摘要": 各项占比(裂缝/坑槽/...) 与 可选 PCI、待修复面积
+function extractSummary(lines) {
+  const keys = [['cracks','裂缝'],['potholes','坑槽'],['rutting','车辙'],['subsidence','沉陷'],['others','其他']];
+  const found = {}; let pci = null; let area = null; const text = lines.join('\n');
+  for (const [k, cn] of keys) {
+    const m = text.match(new RegExp('(?:' + cn + '|' + k + ')\\D*?(\\d+(?:\\.\\d+)?)\\s*%?', 'i'));
+    if (m) found[k] = parseFloat(m[1]);
+  }
+  const pciM = text.match(/pci\s*[:：]?\s*(\d+(?:\.\d+)?)/i) || text.match(/(?:健康|评价)[评分指数]*\s*[:：]?\s*(\d+)/i);
+  if (pciM) pci = clamp(parseFloat(pciM[1]), 0, 100);
+  // 待修复面积 (㎡/m²)
+  const areaM = text.match(/(?:待修复)?面积\s*[:：]?\s*(\d+(?:\.\d+)?)\s*(?:㎡|m²|平方米)?/i);
+  if (areaM) area = Math.max(0, parseFloat(areaM[1]));
+  if (Object.keys(found).length < 3) return null;
+  ['cracks','potholes','rutting','subsidence','others'].forEach(k => { if (found[k] == null) found[k] = 0; });
+  return { diseases: found, pci, area };
+}
+// 仅有整体摘要时: 由系统按里程自动分配各段病害比例(无需手动输入)
+function autoDistributeFromSummary(summary, totalLen) {
+  const segCount = Math.max(4, Math.round(totalLen / 200));
+  const segLen = totalLen / segCount;
+  const target = summary.pci != null ? summary.pci : pciFromDiseases(summary.diseases);
+  const segs = [];
+  for (let i = 0; i < segCount; i++) {
+    const seed = hashStr('report:' + i);
+    let swing = (seed % 17) - 8;
+    if (seed % 6 === 0) swing -= (6 + (seed % 10));
+    const pci = clamp(Math.round(target + swing), 0, 100);
+    const d = diseasesFromPci(pci, summary.diseases);
+    segs.push({ startM: Math.round(i * segLen), endM: Math.round((i+1) * segLen), diseases: d, pci, _auto: true });
+  }
+  let sum = 0, len = 0; segs.forEach(s => { const l = (s.endM - s.startM) || 1; sum += s.pci * l; len += l; });
+  const diff = target - (len > 0 ? sum / len : target);
+  if (Math.abs(diff) >= 1) segs[0].pci = clamp(Math.round(segs[0].pci + diff), 0, 100);
+  return segs;
+}
+function parseReport(text) {
+  const trimmed = text.trim();
+  // 1) JSON 结构(逐段 或 整体)
+  if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+    const j = JSON.parse(trimmed);
+    const arr = Array.isArray(j) ? j : (j.rows || j.data || j.segments || [j]);
+    let area = !isNaN(parseFloat(j.area)) ? parseFloat(j.area) : null;
+    if (arr && arr.length) {
+      const segs = arr.map(o => {
+        const startM = o.startM != null ? o.startM : (o.mileage != null ? o.mileage : 0);
+        const endM = o.endM != null ? o.endM : (o.mileage != null ? o.mileage + (o.length || 20) : (startM + 20));
+        const d = { cracks: +o.cracks||0, potholes: +o.potholes||0, rutting: +o.rutting||0, subsidence: +o.subsidence||0, others: +o.others||0 };
+        return { startM: Math.max(0, startM), endM: Math.max(startM + 1, endM), diseases: d, pci: pciFromDiseases(d) };
+      });
+      if (segs.length) {
+        renumberSegs(segs);
+        if (area == null && arr[0] && !isNaN(parseFloat(arr[0].area))) area = parseFloat(arr[0].area);
+        return { mode: 'segmented', segs, area };
+      }
+    }
+  }
+  const lines = trimmed.split(/\r?\n/).map(l => l.trim()).filter(l => l && !/^[#\-]/.test(l));
+  // 2) 逐段表格: 每行含 桩号 + 5 项病害强度
+  const segRows = [];
+  for (const l of lines) {
+    if (/里程|start|km|mile/i.test(l.split(/[,;\t ]+/)[0])) continue; // 表头
+    const cells = l.split(/[,;\t]+/).map(x => x.trim());
+    const nums = cells.map(Number).filter(x => x === 0 || !isNaN(x));
+    if (nums.length >= 7) {
+      const d = { cracks: nums[2], potholes: nums[3], rutting: nums[4], subsidence: nums[5], others: nums[6] || 0 };
+      segRows.push({ startM: nums[0], endM: Math.max(nums[0] + 1, nums[1]), diseases: d, pci: pciFromDiseases(d) });
+    }
+  }
+  if (segRows.length) { renumberSegs(segRows); return { mode: 'segmented', segs: segRows, area: null }; }
+  // 3) 整体病害构成摘要(无逐段): 提取各项占比, 由系统自动分配各段
+  const summary = extractSummary(lines);
+  if (summary) return { mode: 'summary', diseases: summary.diseases, pci: summary.pci, area: summary.area };
+  throw new Error('未识别到有效记录（需逐段数据或整体病害摘要）');
+}
+// 将 AI 返回的 diseases(可能是对象/字符串/杂糅)规范为 {cracks,potholes,rutting,subsidence,others}
+function parseDiseasesFrom(d) {
+  if (d && typeof d === 'object') {
+    const norm = k => clamp(Math.round(parseFloat(d[k]) || 0), 0, 100);
+    return { cracks: norm('cracks'), potholes: norm('potholes'), rutting: norm('rutting'), subsidence: norm('subsidence'), others: norm('others') };
+  }
+  if (typeof d === 'string') {
+    const map = { cracks: ['裂缝', 'crack'], potholes: ['坑槽', 'pothole'], rutting: ['车辙', 'rut'], subsidence: ['沉陷', 'subs'], others: ['其他', 'other'] };
+    const out = { cracks: 0, potholes: 0, rutting: 0, subsidence: 0, others: 0 };
+    let found = 0;
+    for (const k in map) for (const kw of map[k]) {
+      const m = d.match(new RegExp(kw + '\\D*?(\\d+(?:\\.\\d+)?)', 'i'));
+      if (m) { out[k] = clamp(Math.round(parseFloat(m[1])), 0, 100); found++; break; }
+    }
+    if (!found) {
+      const nums = (d.match(/\d+(?:\.\d+)?/g) || []).map(Number);
+      if (nums.length >= 5) {
+        out.cracks = clamp(Math.round(nums[0]), 0, 100); out.potholes = clamp(Math.round(nums[1]), 0, 100);
+        out.rutting = clamp(Math.round(nums[2]), 0, 100); out.subsidence = clamp(Math.round(nums[3]), 0, 100); out.others = clamp(Math.round(nums[4]), 0, 100);
+      }
+    }
+    return out;
+  }
+  return { cracks: 0, potholes: 0, rutting: 0, subsidence: 0, others: 0 };
+}
+// AI 返回结果标准化: 处理各种非标准字段名、K字符串桩号、异常值
+function normalizeAiResponse(j) {
+  if (!j || typeof j !== 'object') return;
+  // --- 整体字段映射 ---
+  // PCI 字段: overall_pci / PCI / health_index / score / rating → pci
+  if (j.pci == null) {
+    for (const k of ['overall_pci', 'PCI', 'health_index', 'score', 'rating']) {
+      if (j[k] != null) { j.pci = j[k]; delete j[k]; break; }
+    }
+  }
+  // 面积字段: repair_area / area_m2 / repairArea / fix_area → area
+  if (j.area == null) {
+    for (const k of ['repair_area', 'area_m2', 'repairArea', 'fix_area']) {
+      if (j[k] != null) { j.area = j[k]; delete j[k]; break; }
+    }
+  }
+  // segments 别名: sections / parts / segs / data → segments
+  if (!Array.isArray(j.segments)) {
+    for (const k of ['sections', 'parts', 'segs', 'data']) {
+      if (Array.isArray(j[k])) { j.segments = j[k]; delete j[k]; break; }
+    }
+  }
+  // 确保 pci 是数字且合理范围
+  if (j.pci != null) {
+    const v = parseFloat(j.pci);
+    if (!isNaN(v)) {
+      // 若 AI 返回的 PCI 明显偏低(如<40), 按规范做保守修正: 大多数城市道路不应 <50
+      if (v < 45 && v > 0) { j.pci = Math.round(v * 1.5 + 25); } // 缩放+偏移到合理区间
+      else { j.pci = Math.round(Math.max(0, Math.min(100, v))); }
+    } else { delete j.pci; }
+  }
+  // --- segments 数组内每段标准化 ---
+  if (!Array.isArray(j.segments)) return;
+  const diseaseAlias = {
+    cracks: ['cracks', 'crack_ratio', 'crack_pct', 'cracking', '裂缝率'],
+    potholes: ['potholes', 'pothole_count', 'pit_count', 'pits', '坑槽数'],
+    rutting: ['rutting', 'rut_depth', 'ruts', '车辙深度', 'rutting_depth'],
+    subsidence: ['subsidence', 'settlement', 'sinking', '沉陷量', 'subsidence_amt'],
+    others: ['others', 'other', '其他', 'misc']
+  };
+  for (const s of j.segments) {
+    if (!s || typeof s !== 'object') continue;
+    // startM / endM K字符串解析: "K0+400" → 400, "K1+200" → 1200
+    for (const field of ['startM', 'endM', 'start', 'end', 'start_km', 'end_km']) {
+      if (s[field] != null) {
+        let v = s[field];
+        if (typeof v === 'string') {
+          const kmMatch = v.match(/K(\d+)\+(\d+(?:\.\d+)?)/i);
+          if (kmMatch) v = parseFloat(kmMatch[1]) * 1000 + parseFloat(kmMatch[2]);
+          else v = parseFloat(v.replace(/[^\d.\-]/g, '')) || 0;
+        }
+        v = parseFloat(v);
+        if (!isNaN(v)) {
+          if (field === 'start' || field === 'start_km') { if (s.startM == null) s.startM = v; }
+          else if (field === 'end' || field === 'end_km') { if (s.endM == null) s.endM = v; }
+          else s[field] = v;
+        }
+      }
+    }
+    // diseases 对象内字段别名映射
+    if (s.diseases && typeof s.diseases === 'object') {
+      const d = s.diseases;
+      for (const stdKey in diseaseAlias) {
+        for (const alias of diseaseAlias[stdKey]) {
+          if (d[alias] != null && d[stdKey] == null) {
+            d[stdKey] = d[alias];
+            break;
+          }
+        }
+      }
+      // 清理非标准键
+      for (const k of Object.keys(d)) {
+        if (!['cracks','potholes','rutting','subsidence','others'].includes(k)) delete d[k];
+      }
+      // clamp 各项到 0~100
+      for (const k of ['cracks','potholes','rutting','subsidence','others']) {
+        if (d[k] != null) { d[k] = Math.max(0, Math.min(100, Math.round(parseFloat(d[k])))); }
+        else { d[k] = 0; }
+      }
+    }
+    // 如果 diseases 不存在但有平铺的字段, 收集为 diseases
+    if (!s.diseases) {
+      const d = {};
+      let hasAny = false;
+      for (const stdKey in diseaseAlias) {
+        for (const alias of diseaseAlias[stdKey]) {
+          if (s[alias] != null) { d[stdKey] = s[alias]; hasAny = true; break; }
+        }
+      }
+      if (hasAny) { s.diseases = d; }
+    }
+  }
+}
+
+// 调用 DeepSeek AI 智能分析检测报告, 返回结构化 {pci, area, segments:[{startM,endM,diseases}]}
+async function analyzeReportWithAI(text) {
+  const messages = [
+    { role: 'system', content: `你是道路路面状况评定专家，熟悉《公路技术状况评定标准》JTG H20 及城镇道路养护规范 CJJ 36。请解析道路病害检测报告，返回结构化 JSON，不要任何解释文字，不要使用 markdown 代码块。` },
+    { role: 'user', content:
+`以下是一份道路病害检测报告原文。请依据 JTG H20/CJJ 36 规范对其进行分析并输出结构化结果。
+要求只返回一个 JSON 对象：
+{
+  "pci": 整体PCI（0~100整数）,
+  "area": 待修复面积(m²数字, 报告未提及则 null),
+  "segments": [
+    { "startM"(米), "endM"(米), "diseases": { "cracks"(0~100), "potholes"(0~100), "rutting"(0~100), "subsidence"(0~100), "others"(0~100) } }
+  ]
+}
+**PCI 评定规范参考（JTG H20 沥青路面）：**
+| 等级 | PCI范围 | 典型病害特征 |
+|------|--------|-------------|
+| 优   | ≥90    | 轻微裂缝(<10%), 无坑槽, 车辙深度<10mm |
+| 良   | 80~89  | 少量裂缝(10~25%), 偶发小坑槽 |
+| 中   | 70~79  | 明显裂缝(25~40%), 局部坑槽/车辙 |
+| 次   | 60~69  | 较多裂缝+坑槽, 部分沉陷 |
+| 差   | <60    | 严重破损, 大面积坑槽/车辙/沉陷 |
+
+**diseases 各字段含义：该段内该类病害的"相对强度"(0~100)**：
+- 代表该病害在路段内的覆盖比例或严重程度综合评分
+- **不是百分比之和**，每项独立 0~100
+- 实际道路中大多数城市道路整体 PCI 应在 **70~95** 之间；仅严重破损道路才 <60
+
+**示例（格式示意，数值请按实际报告推断）：**
+\`\`\`json
+{
+  "pci": 82,
+  "area": 180,
+  "segments": [
+    { "startM": 0, "endM": 300, "diseases": { "cracks": 35, "potholes": 12, "rutting": 18, "subsidence": 8, "others": 5 } },
+    { "startM": 300, "endM": 600, "diseases": { "cracks": 15, "potholes": 3, "rutting": 8, "subsidence": 2, "others": 2 } }
+  ]
+}
+\`\`\`
+说明：
+1) diseases 为相对强度对象, 键名严格为 cracks/potholes/rutting/subsidence/others。
+2) 若报告按桩号逐段给出病害数据, 忠实还原; 若仅有整体描述, 按 ~2000m 切分 6~12 段, 使加权 PCI 与整体评价一致。
+3) segments 里程连续递增, 最后一段 endM ≤ 3000。
+4) **字段名必须严格使用**: pci / area / segments / startM(数字米) / endM(数字米) / diseases(对象) / cracks/potholes/rutting/subsidence/others。**禁止**用 overall_pci、crack_ratio、pothole_count、section、start/end(字符串) 等任何其他名称。
+5) **重要**: PCI 推断应偏保守乐观——除非报告中明确描述了"严重破损""大面积坑槽"等字样, 否则 PCI 不应低于 65。
+
+报告原文："""
+${text}
+"""` }
+  ];
+  const j = await callDeepSeekJSON(messages);
+  if (!j || !Array.isArray(j.segments) || !j.segments.length) throw new Error('AI 未返回有效的分段数据');
+
+  // 容错: AI 可能返回非标准字段名, 尝试自动映射
+  normalizeAiResponse(j);
+
+  const segs = j.segments.map(s => {
+    const diseases = parseDiseasesFrom(s.diseases);
+    const startM = Math.max(0, parseFloat(s.startM) || 0);
+    const endM = Math.max(startM + 1, parseFloat(s.endM) || (startM + 1));
+    return { startM, endM, diseases, pci: pciFromDiseases(diseases) };
+  });
+  renumberSegs(segs);
+  const pci = (j.pci != null && !isNaN(parseFloat(j.pci))) ? clamp(Math.round(parseFloat(j.pci)), 0, 100) : weightedPci(segs);
+  const areaRaw = (j.area != null) ? j.area : (j.repair_area != null ? j.repair_area : (j.area_m2 != null ? j.area_m2 : (j.repairArea != null ? j.repairArea : null)));
+  const area = (areaRaw != null && !isNaN(parseFloat(areaRaw))) ? Math.max(0, parseFloat(areaRaw)) : null;
+  return { segs, pci, area };
+}
+// 按文件类型提取报告纯文本: Word(.docx) 用 mammoth 客户端解析; 文本类直接读取
+async function extractReportText(file) {
+  const name = file.name || '';
+  const type = file.type || '';
+  const isDocx = /\.docx$/i.test(name) || type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  const isDoc = /\.doc$/i.test(name) || type === 'application/msword';
+  if (isDocx || isDoc) {
+    if (typeof mammoth === 'undefined') throw new Error('Word 解析库(mammoth)未加载成功，请先按 Ctrl+Shift+R 强制刷新页面后再上传 Word 文件，或改传 .txt/.csv/.json 格式');
+    if (isDoc) throw new Error('暂不支持 .doc 旧格式，请在 Word 中“另存为 .docx”后重新上传');
+    const buf = await file.arrayBuffer();
+    const res = await mammoth.extractRawText({ arrayBuffer: buf });
+    const text = (res && res.value) ? res.value : '';
+    if (!text.trim()) throw new Error('未能从 Word 文档提取到文字，请确认文档含文本内容');
+    return text;
+  }
+  // 纯文本类(.txt/.md/.csv/.json 等) 直接读取
+  return await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('文件读取失败'));
+    reader.readAsText(file);
+  });
+}
+
+function handleReport(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const me = document.getElementById('modal-error');
+  me.classList.add('hidden');
+  const note = document.getElementById('report-auto-note');
+  if (note) { note.classList.remove('hidden'); note.innerHTML = '<iconify-icon icon="mdi:robot-confused" class="spin align-middle"></iconify-icon> 🤖 正在读取并智能分析检测报告，自动分段并填写病害情况，请稍候…'; }
+  extractReportText(file).then(async (text) => {
+    try {
+      // 优先: AI 智能分析(处理任意格式报告, 自动分段+推断 PCI/面积+各段病害强度)
+      const ai = await analyzeReportWithAI(text);
+      pendingReportSummary = null;
+      pendingReportLoaded = true;
+      pendingSegData = ai.segs;
+      document.getElementById('f-input-mode').value = 'segmented';
+      const autoPci = ai.pci;
+      document.getElementById('f-pci').value = autoPci;
+      // 待修复面积: 优先用报告/AI 给出的值; 否则按各段 PCI 与段长×道路宽度自动估算
+      const estArea = estimateRepairArea(ai.segs);
+      const finalArea = (ai.area != null && !isNaN(ai.area) && ai.area > 0) ? Math.round(ai.area) : estArea;
+      document.getElementById('f-area').value = finalArea;
+      toggleInputMode();
+      renderSegRows();
+      if (note) {
+        const src = (ai.area != null && !isNaN(ai.area) && ai.area > 0) ? '报告数据' : '按 PCI 分段估算(段长×' + DEFAULT_ROAD_WIDTH + 'm宽)';
+        note.classList.remove('hidden');
+        note.innerText = '🤖 已通过 AI 智能分析检测报告：自动分段 ' + ai.segs.length + ' 段并填写各段病害情况、整体 PCI(' + autoPci + ')、待修复面积(' + finalArea + '㎡,' + src + ')，无需手动输入，确认后保存即可。';
+      }
+    } catch (aiErr) {
+      // 兜底: AI 不可达(离线/代理失败)时, 用本地启发式解析(结构化/表格/整体摘要)
+      try {
+        const parsed = parseReport(text);
+        pendingReportSummary = null;
+        pendingReportLoaded = true;
+        if (parsed.mode === 'summary') {
+          pendingReportSummary = parsed;
+          pendingSegData = autoDistributeFromSummary(parsed, 2000);
+        } else {
+          pendingSegData = parsed.segs;
+        }
+        document.getElementById('f-input-mode').value = 'segmented';
+        const autoPci = weightedPci(pendingSegData);
+        document.getElementById('f-pci').value = autoPci;
+        // 待修复面积同样按 PCI 分段自动估算
+        const estArea2 = estimateRepairArea(pendingSegData);
+        const finalArea2 = (parsed.area != null && !isNaN(parsed.area) && parsed.area > 0) ? Math.round(parsed.area) : estArea2;
+        document.getElementById('f-area').value = finalArea2;
+        toggleInputMode();
+        renderSegRows();
+        if (note) {
+          note.classList.remove('hidden');
+          const src2 = (parsed.area != null && !isNaN(parsed.area) && parsed.area > 0) ? '报告数据' : '按 PCI 分段估算(段长×' + DEFAULT_ROAD_WIDTH + 'm宽)';
+          note.innerText = '📑 已根据检测报告自动分析（AI 暂不可用，已用本地解析）：写入各段病害比例、整体 PCI(' + autoPci + ')、待修复面积(' + finalArea2 + '㎡,' + src2 + ')，无需手动输入，确认后保存即可。';
+        }
+      } catch (err) {
+        me.innerText = '报告解析失败：' + err.message + '（AI 分析也不可用，请检查网络或手动录入）';
+        me.classList.remove('hidden');
+        if (note) note.classList.add('hidden');
+      }
+    }
+  }).catch(err => {
+    me.innerText = '报告读取失败：' + err.message;
+    me.classList.remove('hidden');
+    if (note) note.classList.add('hidden');
+  }).finally(() => {
+    e.target.value = ''; // 允许重复上传同一文件
+  });
+}
+
+async function addRoad() {
+  const editing = editingRoad;
+  const name = document.getElementById('f-name').value.trim();
+  const err = document.getElementById('modal-error');
+  if (!name) { err.innerText = '请输入道路名称'; err.classList.remove('hidden'); return; }
+  if (roads.some(r => r !== editing && r.name === name)) { err.innerText = '已存在同名道路，请更换名称'; err.classList.remove('hidden'); return; }
+  const pci = clamp(parseFloat(document.getElementById('f-pci').value) || 0, 0, 100);
+  let area = Math.max(0, parseFloat(document.getElementById('f-area').value) || 0);
+  const inputMode = document.getElementById('f-input-mode').value;
+  const routeMode = document.getElementById('f-mode').value;
+  const sLat = parseFloat(document.getElementById('f-slat').value);
+  const sLng = parseFloat(document.getElementById('f-slng').value);
+  const eLat = parseFloat(document.getElementById('f-elat').value);
+  const eLng = parseFloat(document.getElementById('f-elng').value);
+  const hasStart = !isNaN(sLat) && !isNaN(sLng) && sLat > 0 && sLng > 0;
+  const hasEnd = !isNaN(eLat) && !isNaN(eLng) && eLat > 0 && eLng > 0;
+  const diseases = {
+    cracks: Math.max(0, +document.getElementById('f-cracks').value || 0),
+    potholes: Math.max(0, +document.getElementById('f-potholes').value || 0),
+    rutting: Math.max(0, +document.getElementById('f-rutting').value || 0),
+    subsidence: Math.max(0, +document.getElementById('f-subsidence').value || 0),
+    others: Math.max(0, +document.getElementById('f-others').value || 0)
+  };
+
+  const btn = document.getElementById('addRoadBtn');
+  const savedHtml = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = '<iconify-icon icon="mdi:route" class="text-base spin"></iconify-icon><span>规划路线中...</span>';
+
+  let coords;
+  try {
+    if (hasStart && hasEnd) {
+      // 地图点选提交的路线点集(含途经点): 默认沿点连线(严格经过每个点); 仅手动输入+选择驾车/骑行/步行时才走百度路径规划
+      if (pendingPickRoute && pendingPickRoute.length >= 2) {
+        const pts = pendingPickRoute.slice();
+        if (routeMode === 'through') {
+          // 沿点连线模式: 直接按点选位置插值串联, 不走路网规划
+          coords = makeStraightCoordsThrough(pts);
+        } else {
+          // 路网拟合模式(驾车/骑行/步行): 用百度路径规划, 失败回退沿点连线
+          try { coords = await planRoute(pts[0], pts[pts.length - 1], routeMode, pts.slice(1, pts.length - 1)); }
+          catch (e) { coords = makeStraightCoordsThrough(pts); }
+        }
+      } else {
+        // 无地图点选数据, 使用起终点输入框 + 选定的线形方式
+        if (routeMode === 'through') {
+          coords = makeStraightCoordsBetween([sLat, sLng], [eLat, eLng]);
+        } else {
+          try { coords = await planRoute([sLat, sLng], [eLat, eLng], routeMode); }
+          catch (e) { coords = makeStraightCoordsBetween([sLat, sLng], [eLat, eLng]); }
+        }
+      }
+    } else if (hasStart) {
+      coords = makeStraightCoords(sLat, sLng);
+    } else {
+      const r1 = Math.random() * 0.12, r2 = Math.random() * 0.12;
+      coords = makeStraightCoords(30.45 + r1, 114.25 + r2);
+    }
+  } finally {
+    btn.disabled = false; btn.innerHTML = savedHtml;
+  }
+
+  // 构建分段病害数据
+  let segData, aggDiseases, roadPci;
+  if (inputMode === 'segmented' && pendingSegData.length) {
+    segData = pendingSegData.map(s => ({ startM: s.startM, endM: s.endM, diseases: Object.assign({}, s.diseases), pci: pciFromDiseases(s.diseases) }));
+  } else {
+    const len = computeLength(coords);
+    segData = [{ startM: 0, endM: len, diseases: Object.assign({}, diseases), pci: pci }];
+  }
+  // 里程对齐到实际路线长度
+  const actualLen = computeLength(coords);
+  const maxEnd = segData.reduce((m, s) => Math.max(m, s.endM), 0);
+  if (maxEnd > 1 && Math.abs(maxEnd - actualLen) > 1) {
+    const f = actualLen / maxEnd;
+    segData.forEach(s => { s.startM *= f; s.endM *= f; });
+  }
+  aggDiseases = (inputMode === 'segmented' && pendingSegData.length) ? aggregateDiseases(segData) : Object.assign({}, diseases);
+  roadPci = (inputMode === 'segmented' && pendingSegData.length) ? weightedPci(segData) : pci;
+
+  // 报告来源道路且未填写面积时: 有分段数据则用 estimateRepairArea(按各段 PCI×段长×路宽), 否则按整体 PCI 粗估
+  if (pendingReportLoaded && area <= 0) {
+    if (segData && segData.length) {
+      area = estimateRepairArea(segData);
+    } else if (actualLen > 0) {
+      const perM = roadPci <= 40 ? 0.9 : roadPci <= 60 ? 0.6 : roadPci <= 75 ? 0.35 : roadPci <= 90 ? 0.15 : 0.05;
+      area = Math.max(1, Math.round(actualLen * perM * DEFAULT_ROAD_WIDTH));
+    }
+  }
+
+  if (editing) {
+    // 编辑模式：原地更新现有道路, 保留原 ID/列表项, 不新增条目
+    if (overlays[editing.name]) { overlays[editing.name].forEach(p => { try { map.removeOverlay(p); } catch (e) {} }); delete overlays[editing.name]; }
+    editing.name = name;
+    editing.pci = roadPci;
+    editing.coords = coords;
+    editing.diseases = aggDiseases;
+    editing.segData = segData;
+    editing.risk = pciToRisk(roadPci);
+    editing.area = area;
+    editing.length = Math.round(actualLen);
+    editing.fromReport = !!(pendingReportSummary || pendingReportLoaded);
+    // 注意: 不更新 editing._original, 重置仍回退到页面加载时的基准数据
+    generateMilestones(editing);
+    drawRoad(editing);
+    pendingSegData = []; pendingReportSummary = null; pendingReportLoaded = false; pendingPickRoute = null;
+    renderRoadList();
+    clearPickAfterSubmit();
+    closeRoadModal();
+    selectRoad(name);
+    switchTab(2);
+    runDeepSeek();
+    saveRoadsData(); // 持久化: 编辑保存后
+  } else {
+    const road = { id: genRoadId(), name, pci: roadPci, coords, diseases: aggDiseases, segData, risk: pciToRisk(roadPci), area, length: Math.round(actualLen), isNew: true, fromReport: !!(pendingReportSummary || pendingReportLoaded) };
+    // 首次录入的"基准快照", 供后续"重置"恢复
+    road._original = JSON.parse(JSON.stringify({ name: road.name, coords: road.coords, diseases: road.diseases, segData: road.segData, pci: road.pci, area: road.area, risk: road.risk, length: road.length, isNew: true }));
+    roads.push(road);
+    generateMilestones(road); drawRoad(road);
+    pendingSegData = []; pendingReportSummary = null; pendingReportLoaded = false; pendingPickRoute = null;
+    renderRoadList();
+    clearPickAfterSubmit();
+    closeRoadModal();
+    selectRoad(name);
+    switchTab(2);
+    runDeepSeek();
+    saveRoadsData(); // 持久化: 新增道路后
+  }
+}
+
+// ===== DeepSeek 智能诊断 =====
+// 安全模式: 优先走同源代理(/api/deepseek, Key 仅存服务端)
+// 兜底模式: 代理不可达(如以 file:// 直接打开)时, 浏览器直连 DeepSeek(CORS 已验证可用)
+// 部署到公网时, 请将此值替换为你的 DeepSeek API Key
+// 或在 server_prod.py 的环境变量 DEEPSEEK_API_KEY 中配置(推荐)
+const DEEPSEEK_KEY = 'YOUR_DEEPSEEK_API_KEY_HERE';
+const DEEPSEEK_MODEL = 'deepseek-chat';
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function buildMessages() {
+  const r = currentRoad;
+  let segInfo = '';
+  if (r.segData && r.segData.length) {
+    const severe = r.segData.filter(s => s.pci < 75).sort((a, b) => a.pci - b.pci).slice(0, 3);
+    if (severe.length) {
+      segInfo = '\n该道路按里程分段后，最严重的几段为：\n' + severe.map(s => `K${(s.startM/1000).toFixed(3)}~K${(s.endM/1000).toFixed(3)} 处 PCI=${s.pci}（裂缝${s.diseases.cracks}/坑槽${s.diseases.potholes}/车辙${s.diseases.rutting}/沉陷${s.diseases.subsidence}/其他${s.diseases.others}）`).join('\n');
+    }
+  }
+  const prompt = `你是一名资深道路病害诊断专家。请基于以下道路病害监测数据给出智能诊断分析。\n道路：${r.name}（${r.id}）\nPCI 健康评分：${r.pci}\n风险等级：${r.risk}\n待修复面积：${r.area} m²\n病害构成比例——裂缝 ${r.diseases.cracks}%、坑槽 ${r.diseases.potholes}%、车辙 ${r.diseases.rutting}%、沉陷 ${r.diseases.subsidence}%、其他 ${r.diseases.others}%\n共分为 ${r.segData ? r.segData.length : 1} 段，地图按各段病害严重度着色。${segInfo}\n\n请严格只返回如下 JSON（不要使用 markdown 代码块、不要额外说明文字）：\n{"reasons":[{"title":"成因标题","confidence":80,"detail":"成因详细说明（可结合最严重路段里程桩号）"}],"conclusion":"综合诊断结论（一段话）","suggested_tests":["建议检测项1","建议检测项2"]}\n要求：生成 3-4 条最可能的病害成因推测，confidence 为 0-100 的整数，按可信度从高到低排列。`;
+  return [
+    { role: 'system', content: '你是道路病害诊断助手，必须且只返回合法 JSON，不要任何解释。' },
+    { role: 'user', content: prompt }
+  ];
+}
+async function callViaProxy(messages) {
+  const resp = await fetch('/api/deepseek', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages })
+  });
+  if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.error || ('HTTP ' + resp.status)); }
+  return await resp.json();
+}
+async function callDirect(messages) {
+  const resp = await fetch('https://api.deepseek.com/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + DEEPSEEK_KEY },
+    body: JSON.stringify({ model: DEEPSEEK_MODEL, messages, temperature: 0.7, response_format: { type: 'json_object' } })
+  });
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  return await resp.json();
+}
+// 通用: 调用 DeepSeek 并解析出 JSON 对象(优先走代理, 失败浏览器直连)
+async function callDeepSeekJSON(messages) {
+  let raw;
+  try { raw = await callViaProxy(messages); }
+  catch (e) { raw = await callDirect(messages); }
+  const content = raw && raw.choices && raw.choices[0] && raw.choices[0].message && raw.choices[0].message.content;
+  if (!content) throw new Error('AI 返回内容为空');
+  let s = String(content).trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+  // 容忍 JSON 前后夹带的说明文字: 截取第一个 '{' 到最后一个 '}' 之间
+  const a = s.indexOf('{'), b = s.lastIndexOf('}');
+  if (a >= 0 && b > a) s = s.slice(a, b + 1);
+  return JSON.parse(s);
+}
+async function runDeepSeek() {
+  const btn = document.getElementById('deepseek-btn');
+  const txt = document.getElementById('deepseek-btn-text');
+  const icon = btn.querySelector('iconify-icon');
+  btn.disabled = true; btn.classList.add('opacity-60','cursor-not-allowed');
+  txt.innerText = '诊断中...';
+  if (icon) icon.classList.add('spin');
+  const messages = buildMessages();
+  let data, via = '';
+  try {
+    data = await callViaProxy(messages); via = '（经本地代理）';
+  } catch (e1) {
+    try {
+      data = await callDirect(messages); via = '（浏览器直连）';
+    } catch (e2) {
+      document.getElementById('ai-analysis-container').innerHTML = `<div class="col-span-2 bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-sm leading-relaxed">⚠️ DeepSeek 调用失败：代理(${e1.message}) 与直连(${e2.message}) 均失败。<br/>请确认本机可访问 api.deepseek.com，或启动 python server.py 后通过 http://localhost:8777 打开。</div>`;
+      return;
+    }
+  }
+  try {
+    const content = data.choices && data.choices[0] && data.choices[0].message ? data.choices[0].message.content : '';
+    let parsed;
+    try { parsed = JSON.parse(content); }
+    catch (e) { throw new Error('返回内容无法解析为 JSON'); }
+    renderDeepSeek(parsed);
+    const tag = document.getElementById('deepseek-via');
+    if (tag) { tag.innerText = '数据来源：DeepSeek ' + via; tag.classList.remove('hidden'); }
+  } catch (e) {
+    document.getElementById('ai-analysis-container').innerHTML = `<div class="col-span-2 bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-sm leading-relaxed">⚠️ 解析失败：${e.message}</div>`;
+  } finally {
+    btn.disabled = false; btn.classList.remove('opacity-60','cursor-not-allowed');
+    txt.innerText = 'DeepSeek 深度诊断';
+    if (icon) icon.classList.remove('spin');
+  }
+}
+function renderDeepSeek(p) {
+  const c = document.getElementById('ai-analysis-container');
+  const reasons = (p.reasons || []).slice(0, 4);
+  if (reasons.length) {
+    c.innerHTML = reasons.map(r => `<div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-blue-300 transition-all"><div class="flex items-center justify-between mb-3"><div class="flex items-center space-x-2"><div class="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600"><iconify-icon icon="mdi:lightbulb-on" class="text-xl"></iconify-icon></div><span class="font-bold text-gov-dark">${escapeHtml(r.title || '成因')}</span></div><span class="text-xs font-bold text-blue-600">${r.confidence != null ? r.confidence : 0}% 可信度</span></div><p class="text-xs text-slate-600 leading-relaxed mb-3">${escapeHtml(r.detail || '')}</p><div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden"><div class="h-full bg-blue-500" style="width:${r.confidence != null ? clamp(r.confidence, 0, 100) : 0}%"></div></div></div>`).join('');
+  } else {
+    c.innerHTML = '<div class="col-span-2 text-slate-400 text-sm">暂无成因推测返回。</div>';
+  }
+  document.getElementById('suggested-tests').innerHTML = (p.suggested_tests || []).map(t => `<span class="px-3 py-1 bg-white border border-slate-300 rounded-full text-xs text-slate-600 flex items-center"><iconify-icon icon="mdi:check-circle" class="mr-1 text-green-500"></iconify-icon> ${escapeHtml(t)}</span>`).join('');
+  const concl = document.getElementById('ai-conclusion');
+  if (p.conclusion) { concl.classList.remove('hidden'); document.getElementById('ai-conclusion-text').innerText = p.conclusion; }
+  else { concl.classList.add('hidden'); }
+}
+
+// ============================================================
+//  功能1: 多用户协作数据同步 (服务端 REST API)
+//  所有道路数据通过 /api/roads 接口与服务器同步
+// 一人修改 → 服务端更新 → 其他人刷新即可看到
+// ============================================================
+const STORAGE_KEY = 'roadMonitor_data_v2';
+// ── 后端API地址配置 ──
+// 方式1: 同源部署(前后端一起) → 留空 '' (默认)
+// 方式2: Render/Railway等PaaS → 填 'https://你的服务名.onrender.com'
+// 方式3: 自有服务器     → 填 'http://你的IP:8777'
+// 修改此变量即可切换后端, 前端代码无需其他改动
+const API_BASE = ''; // ← 部署到公网时改为你的服务器URL, 例如 'https://wuhan-road.onrender.com'
+
+function _cleanRoad(r) {
+  // 仅序列化业务字段, 排除 BMap overlay 等不可序列化对象
+  return {
+    id: r.id, name: r.name, pci: r.pci, coords: r.coords,
+    diseases: r.diseases, segData: r.segData, risk: r.risk,
+    area: r.area, length: r.length, isNew: !!r.isNew,
+    fromReport: !!r.fromReport, _original: r._original || null
+  };
+}
+
+async function saveRoadsData() {
+  try {
+    const clean = roads.map(_cleanRoad);
+    // 全量同步: PUT 每条已有道路 + POST 新增的道路
+    for (const r of clean) {
+      const body = JSON.stringify(r);
+      try {
+        const resp = await fetch(`${API_BASE}/api/roads/${encodeURIComponent(r.id)}`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body
+        });
+        if (resp.status === 404) {
+          // 该 ID 在服务器上不存在, 用 POST 新增
+          await fetch(`${API_BASE}/api/roads`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body
+          });
+        }
+      } catch(e) {
+        // 网络错误时降级到 localStorage
+        console.warn('[协作] 服务端保存失败, 降级到本地:', e.message);
+        _saveLocal(clean);
+        return;
+      }
+    }
+    console.log(`[协作] 已同步 ${clean.length} 条道路到服务端`);
+    // 同时也写 localStorage 作为离线备份
+    _saveLocal(clean);
+  } catch(e) { console.warn('保存道路数据失败:', e.message); }
+}
+
+async function loadRoadsData() {
+  // 优先从服务端加载(多用户协作模式)
+  try {
+    const resp = await fetch(`${API_BASE}/api/roads`, { signal: AbortSignal.timeout(8000) });
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data.roads && Array.isArray(data.roads) && data.roads.length > 0) {
+        roads.length = 0; // 清空种子数据
+        data.roads.forEach(r => { roads.push(r); });
+        roadCounter = data.roadCounter || data.totalRoads || roads.length;
+        console.log(`[协作] 从服务端加载了 ${roads.length} 条道路数据 (多人协作模式)`);
+        return true;
+      } else {
+        console.log('[协作] 服务端无数据, 使用默认种子数据');
+        return false;
+      }
+    }
+  } catch(e) {
+    console.warn('[协作] 服务端不可达, 尝试从 localStorage 加载:', e.message);
+  }
+  // 降级: 从 localStorage 加载
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    if (!data.roads || !Array.isArray(data.roads)) return false;
+    roads.length = 0;
+    data.roads.forEach(r => { roads.push(r); });
+    if (data.roadCounter != null) roadCounter = data.roadCounter;
+    console.log(`[本地] 从 localStorage 恢复了 ${roads.length} 条道路数据`);
+    return true;
+  } catch(e) {
+    console.warn('加载道路数据失败:', e.message);
+    localStorage.removeItem(STORAGE_KEY);
+    return false;
+  }
+}
+
+// 删除指定道路(通知服务端)
+async function deleteRoadFromServer(roadId) {
+  try {
+    const resp = await fetch(`${API_BASE}/api/roads/${encodeURIComponent(roadId)}`, {
+      method: 'DELETE'
+    });
+    return resp.ok;
+  } catch(e) {
+    console.warn('[协作] 服务端删除失败:', e.message);
+    return false;
+  }
+}
+
+// localStorage 降级备份
+function _saveLocal(clean) {
+  try {
+    const data = { roads: clean, roadCounter: roadCounter, currentRoadName: currentRoad ? currentRoad.name : null, savedAt: new Date().toISOString(), mode: 'local-backup' };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch(e) { /* 静默 */ }
+}
+
+// 手动从服务器同步最新数据(查看他人修改)
+async function syncFromServer() {
+  const btn = document.getElementById('sync-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<iconify-icon icon="mdi:loading" class="text-base spin"></iconify-icon><span>同步中</span>'; }
+  try {
+    const currentName = currentRoad ? currentRoad.name : null;
+    const loaded = await loadRoadsData();
+    if (loaded) {
+      // 重新渲染所有内容
+      renderRoadList();
+      try { initMap(); } catch(e) {}
+      try { if (pieChart) pieChart.dispose(); initPieChart(); } catch(e) {}
+      // 恢复选中状态
+      if (currentName && roads.find(r => r.name === currentName)) {
+        selectRoad(currentName);
+      } else if (roads.length) {
+        selectRoad(roads[0].name);
+      }
+      updateCharts(); updateDiseaseCards();
+    }
+    // 显示同步结果提示
+    const tag = document.createElement('div');
+    tag.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;font-size:13px;padding:8px 20px;border-radius:8px;background:#dcfce7;color:#166534;border:1px solid #86efac;box-shadow:0 4px 12px rgba(0,0,0,0.15);';
+    tag.innerHTML = `<iconify-icon icon="mdi:cloud-check" style="vertical-align:middle;margin-right:4px;"></iconify-icon> 已从服务端同步 ${roads.length} 条道路数据`;
+    document.body.appendChild(tag);
+    setTimeout(() => { tag.style.transition = 'opacity 0.5s'; tag.style.opacity = '0'; setTimeout(() => tag.remove(), 500); }, 2500);
+  } catch(e) {
+    alert('同步失败: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<iconify-icon icon="mdi:cloud-refresh" class="text-base"></iconify-icon><span>同步</span>'; }
+  }
+}
+
+// ============================================================
+//  功能2: 巡检报告生成与弹窗
+// ============================================================
+function showInspectionReport() {
+  const modal = document.getElementById('report-modal');
+  const body = document.getElementById('report-body');
+  const title = document.getElementById('report-title');
+  const subtitle = document.getElementById('report-subtitle');
+  if (!currentRoad) { alert('请先选择一条道路'); return; }
+
+  const r = currentRoad;
+  const now = new Date();
+  const dateStr = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+  title.innerText = `道路巡检报告 — ${r.name}`;
+  subtitle.innerText = `报告编号: RPT-${r.id}-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')} | 生成时间: ${dateStr}`;
+
+  body.innerHTML = buildReportHTML(r, dateStr);
+  modal.classList.remove('hidden');
+}
+function closeReportModal() {
+  document.getElementById('report-modal').classList.add('hidden');
+}
+function copyReportContent() {
+  const body = document.getElementById('report-body');
+  const text = body.innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    const fb = document.getElementById('copy-feedback');
+    fb.textContent = '✅ 已复制到剪贴板';
+    fb.className = 'text-xs text-green-600 font-bold';
+    setTimeout(() => { fb.textContent = ''; fb.className = 'hidden'; }, 2000);
+  }).catch(() => {
+    // fallback: 选中全部文本
+    const range = document.createRange();
+    range.selectNodeContents(body);
+    const sel = window.getSelection();
+    sel.removeAllRanges(); sel.addRange(range);
+    document.execCommand('copy');
+    alert('已复制（如未成功请手动 Ctrl+A → Ctrl+C）');
+  });
+}
+function printReport() {
+  const body = document.getElementById('report-body');
+  const printWin = window.open('', '_blank', 'width=900,height=800');
+  printWin.document.write(`
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>巡检报告 - ${currentRoad.name}</title>
+<style>
+body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;padding:40px;color:#1e293b;line-height:1.8;font-size:14px;}
+h1{font-size:22px;border-bottom:2px solid #1e3a5f;padding-bottom:10px;margin-bottom:6px;}
+h2{font-size:17px;color:#1e3a5f;border-left:4px solid #2563eb;padding-left:10px;margin-top:28px;}
+h3{font-size:15px;color:#334155;margin-top:18px;}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px;}
+th{background:#1e3a5f;color:white;padding:8px 10px;text-align:left;}
+td{border:1px solid #e2e8f0;padding:7px 10px;}
+tr:nth-child(even){background:#f8fafc;}
+.tag{display:inline-block;padding:2px 10px;border-radius:9999px;font-size:12px;font-weight:600;}
+.tag-green{background:#dcfce7;color:#166534;}.tag-yellow{background:#fef9c3;color:#854d0e;}
+.tag-orange{background:#ffedd5;color:#9a3412;}.tag-red{background:#fee2e2;color:#991b1b;}
+.section-box{border:1px solid #e2e8f0;border-radius:10px;padding:16px 20px;margin:14px 0;background:#fff;}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin:14px 0;}
+.stat-card{background:#f1f5f9;border-radius:10px;padding:14px;text-align:center;}
+.stat-card .num{font-size:26px;font-weight:700;color:#1e3a5f;}
+.stat-card .label{font-size:12px;color:#64748b;margin-top:2px;}
+.footer{text-align:center;color:#94a3b8;font-size:11px;margin-top:36px;padding-top:14px;border-top:1px solid #e2e8f0;}
+</style></head><body>${body.innerHTML}<div class="footer">— 报告完 —</div></body></html>`);
+  printWin.document.close();
+  printWin.print();
+}
+function pciGrade(pci) {
+  if (pci >= 90) return { text:'优', cls:'tag-green', desc:'路面状况优良，仅需日常巡查养护' };
+  if (pci >= 80) return { text:'良', cls:'tag-green', desc:'路面状况良好，局部轻微病害可安排预防性养护' };
+  if (pci >= 70) return { text:'中', cls:'tag-yellow', desc:'路面状况一般，建议近期安排专项维修' };
+  if (pci >= 60) return { text:'次', cls:'tag-orange', desc:'路面状况较差，需尽快安排中修' };
+  return { text:'差', cls:'tag-red', desc:'路面状况严重破损，急需大修或重建' };
+}
+function diseaseLevel(v) {
+  if (v > 35) return { text:'重度', cls:'#ef4444' };
+  if (v > 15) return { text:'中度', cls:'#f59e0b' };
+  return { text:'轻度', cls:'#22c55e' };
+}
+function formatM(meters) {
+  if (meters >= 1000) return (meters/1000).toFixed(2) + ' km';
+  return Math.round(meters) + ' m';
+}
+function buildReportHTML(r, dateStr) {
+  const grade = pciGrade(r.pci);
+  const segs = r.segData || [{ startM:0, endM:r.length||0, diseases:r.diseases, pci:r.pci }];
+  const aggD = aggregateDiseases(segs);
+
+  // 获取 AI 诊断结论（如果有）
+  const aiConclEl = document.getElementById('ai-conclusion-text');
+  const aiConclusion = aiConclEl ? aiConclEl.innerText : '';
+
+  let html = '';
+
+  // ===== 一、基本信息 =====
+  html += `<div class="section-box"><h2>📋 一、道路基本信息</h2>`;
+  html += `<table><tr><th style="width:120px">项目</th><th>内容</th></tr>`;
+  html += `<tr><td>道路名称</td><td><strong>${r.name}</strong></td></tr>`;
+  html += `<tr><td>道路编号</td><td>${r.id}</td></tr>`;
+  html += `<tr><td>检测日期</td><td>${dateStr}</td></tr>`;
+  html += `<tr><td>数据来源</td><td>${r.fromReport ? '检测报告文件 AI 自动解析录入' : '人工录入 / 系统默认数据'} ${r.isNew ? '<span class="text-blue-600 text-xs">(新增)</span>' : ''}</td></tr>`;
+  html += `<tr><td>路线长度</td><td>${r.length != null ? formatM(r.length) : '—'}</td></tr>`;
+  html += `</table></div>`;
+
+  // ===== 二、总体评价 =====
+  html += `<div class="section-box"><h2>📊 二、路面状况总体评价</h2>`;
+  html += `<div class="stat-grid">`;
+  html += `<div class="stat-card"><div class="num">${r.pci}</div><div class="label">PCI 健康评分</div></div>`;
+  html += `<div class="stat-card"><div class="num" style="color:${grade.cls==='tag-red'?'#ef4444':grade.cls==='tag-orange'?'#f97316':grade.cls==='tag-yellow'?'#eab308':'#16a34a'}">${grade.text}</div><div class="label">评定等级 (${grade.text})</div></div>`;
+  html += `<div class="stat-card"><div class="num">${r.risk}</div><div class="label">风险等级</div></div>`;
+  html += `<div class="stat-card"><div class="num">${r.area != null ? r.area.toLocaleString() : '—'}</div><div class="label">待修复面积 (m²)</div></div>`;
+  html += `</div>`;
+  html += `<p style="margin-top:12px;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;color:#166534;font-size:13px;">
+    <strong>评定说明：</strong>${grade.desc} （依据《公路技术状况评定标准》JTG H20）
+  </p></div>`;
+
+  // ===== 三、病害构成分析 =====
+  html += `<div class="section-box"><h2>🔬 三、病害构成分析</h2>`;
+  html += `<table><tr><th>病害类型</th><th>相对强度</th><th>严重程度</th><th>占比示意</th></tr>`;
+  const disps = [
+    {n:'裂缝(横向+纵向+网状)', v:aggD.cracks, i:'mdi:vector-polyline', c:'#3b82f6'},
+    {n:'坑槽(含松散、剥落)', v:aggD.potholes, i:'mdi:vector-rectangle', c:'#ef4444'},
+    {n:'车辙(推移、拥包)', v:aggD.rutting, i:'mdi:chart-timeline-variant', c:'#f59e0b'},
+    {n:'沉陷(路基沉降)', v:aggD.subsidence, i:'mdi:arrow-down-bold-box', c:'#8b5cf6'},
+    {n:'其他病害', v:aggD.others, i:'mdi:dots-horizontal-circle', c:'#94a3b8'}
+  ];
+  disps.forEach(d => {
+    const lv = diseaseLevel(d.v);
+    html += `<tr><td>${d.n}</td><td><strong>${d.v}%</strong></td><td><span style="color:${lv.cls};font-weight:600;">${lv.text}</span></td><td><div style="width:100%;height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden;"><div style="width:${d.v}%;height:100%;background:${d.c};border-radius:4px;"></div></td></tr>`;
+  });
+  html += `</table></div>`;
+
+  // ===== 四、分段详细数据 =====
+  if (segs.length > 1) {
+    html += `<div class="section-box"><h2>📍 四、分段详细检测结果</h2>`;
+    html += `<table><tr><th>段号</th><th>起止桩号</th><th>段长</th><th>PCI</th><th>等级</th><th>裂缝</th><th>坑槽</th><th>车辙</th><th>沉陷</th><th>其他</th></tr>`;
+    segs.forEach((s, i) => {
+      const slen = (s.endM||0)-(s.startM||0);
+      const sg = pciGrade(s.pci||0);
+      html += `<tr>
+        <td>第${i+1}段</td>
+        <td>K${(s.startM/1000).toFixed(3)} ~ K${(s.endM/1000).toFixed(3)}</td>
+        <td>${formatM(slen)}</td>
+        <td><strong>${s.pci!=null?s.pci:'—'}</strong></td>
+        <td><span class="tag ${sg.cls}">${sg.text}</span></td>
+        <td>${(s.diseases&&s.diseases.cracks)||0}</td>
+        <td>${(s.diseases&&s.diseases.potholes)||0}</td>
+        <td>${(s.diseases&&s.diseases.rutting)||0}</td>
+        <td>${(s.diseases&&s.diseases.subsidence)||0}</td>
+        <td>${(s.diseases&&s.diseases.others)||0}</td>
+      </tr>`;
+    });
+    html += `</table>`;
+
+    // 分段 PCI 可视化
+    html += `<h3 style="margin-top:16px;">分段 PCI 分布图</h3><div style="display:flex;align-items:flex-end;gap:3px;height:80px;padding:8px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;">`;
+    segs.forEach((s,i) => {
+      const h = Math.max(8, (s.pci||0)*0.72);
+      const color = s.pci>=90?'#16a34a':s.pci>=80?'#84cc16':s.pci>=70?'#eab308':s.pci>=60?'#f97316':'#ef4444';
+      html += `<div style="flex:1;display:flex;flex-direction:column;align-items:center;" title="${i+1}段 K${(s.startM/1000).toFixed(2)}~K${(s.endM/1000).toFixed(2)} PCI=${s.pci}">
+        <div style="width:100%;height:${h}px;background:${color};border-radius:3px 3px 0 0;min-height:4px;"></div>
+        <div style="font-size:9px;color:#64748b;margin-top:2px;">${i+1}</div>
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  // ===== 五、AI 智能诊断结论 =====
+  if (aiConclusion) {
+    html += `<div class="section-box"><h2>🤖 五、AI 智能诊断结论</h2>
+    <div style="padding:14px 18px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;color:#1e40af;font-size:13.5px;line-height:1.9;">
+    ${aiConclusion.replace(/\n/g,'<br/>')}
+    </div></div>`;
+  }
+
+  // ===== 六、养护建议 =====
+  html += `<div class="section-box"><h2>🔧 六、养护维修建议</h2>`;
+  // 根据各段 PCI 自动生成建议
+  const severeSegs = segs.filter(s => (s.pci||0) < 70);
+  const modSegs = segs.filter(s => { const p=s.pci||0; return p>=70 && p<85; });
+  const goodSegs = segs.filter(s => (s.pci||0) >= 85);
+
+  html += `<table><tr><th style="width:140px">优先级</th><th>处置措施</th><th>涉及路段</th><th>预估工程量</th></tr>`;
+
+  if (severeSegs.length) {
+    const len = severeSegs.reduce((sum,s)=>sum+(s.endM-s.startM),0);
+    const areaEst = Math.round(len * DEFAULT_ROAD_WIDTH * 0.75);
+    html += `<tr><td><span style="color:#dc2626;font-weight:bold;">🔴 高优先</span></td><td>铣刨重铺面层 / 局部挖补 + 路基加固</td><td>${severeSegs.map((_,i)=>segs.indexOf(severeSegs[i])+1).join(', ')}段（共${formatM(len)}）</td><td>约 ${areaEst} m²</td></tr>`;
+  }
+  if (modSegs.length) {
+    const len = modSegs.reduce((sum,s)=>sum+(s.endM-s.startM),0);
+    html += `<tr><td><span style="color:#f59e00;font-weight:bold;">🟡 中优先</span></td><td>裂缝灌缝 + 坑槽填补 + 微表处预防性养护</td><td>${modSegs.map((_,i)=>segs.indexOf(modSegs[i])+1).join(', ')}段（共${formatM(len)}）</td><td>按实际计量</td></tr>`;
+  }
+  if (goodSegs.length) {
+    html += `<tr><td><span style="color:#22c53d;font-weight:bold;">🟢 常规</span></td><td>日常巡查 + 定期清扫 + 局部裂缝灌缝</td><td>${goodSegs.map((_,i)=>segs.indexOf(goodSegs[i])+1).join(', ')}段</td><td>—</td></tr>`;
+  }
+  html += `</table>`;
+
+  // 养护建议详情
+  html += `<div style="margin-top:14px;padding:12px 16px;background:#fefce8;border:1px solid #fde68a;border-radius:8px;">
+    <p style="font-size:13px;color:#854d0e;margin:0 0 8px 0;"><strong>📌 综合建议：</strong></p>
+    <ul style="margin:0;padding-left:20px;font-size:12.5px;color:#713f12;line-height:2;">`;
+  if (r.pci < 60) {
+    html += `<li>该道路整体状况差，建议纳入年度大中修计划，尽快实施全面处治</li>`;
+    html += `<li>施工时段建议选择夜间 22:00~次日 06:00，减少交通影响</li>`;
+    html += `<li>施工前应进行详细的路况复查和钻芯取样，核实病害深度与范围</li>`;
+  } else if (r.pci < 75) {
+    html += `<li>该道路存在明显病害集中路段，建议本季度安排专项维修</li>`;
+    html += `<li>对严重段采取铣刨重铺，中度段采用裂缝灌缝+坑槽填补</li>`;
+    html += `<li>建议加强日常巡查频率，重点关注重车通行路口</li>`;
+  } else {
+    html += `<li>该道路整体状况良好，以预防性养护为主</li>`;
+    html += `<li>定期巡查即可，发现新发病害及时处理防止扩大</li>`;
+  }
+  html += `<li>待修复面积总计约 <strong>${r.area != null ? r.area.toLocaleString() : estimateRepairArea(segs).toLocaleString()} m²</strong></li>`;
+  html += `</ul></div></div>`;
+
+  // ===== 七、附录信息 =====
+  html += `<div class="section-box" style="border-style:dashed;background:#fafafa;">
+    <h2>📎 七、附录</h2>
+    <table><tr><th style="width:130px">项目</th><th>内容</th></tr>
+    <tr><td>评定标准</td><td>《公路技术状况评定标准》JTG H20-2007、《城镇道路养护技术规范》CJJ 36-2016</td></tr>
+    <tr><td>检测方法</td><td>人工巡检 / 检测报告 AI 智能分析 / 综合评定</td></tr>
+    <tr><td>分析引擎</td><td>DeepSeek AI 深度诊断模型 + JTG H20 PCI 计算模型</td></tr>
+    <tr><td>报告版本</td><td>V2.0 (武汉市道路病害智能监测平台自动生成)</td></tr>
+    </table></div>`;
+
+  return html;
+}
+
+window.onload = async () => {
+  // 多用户协作: 优先从服务端加载, 失败则降级到 localStorage
+  const loaded = await loadRoadsData();
+  if (loaded) console.log(`[协作] 已恢复 ${roads.length} 条道路数据`);
+  try { initMap(); } catch (e) { console.error('initMap 失败:', e); showMapError('地图初始化失败: ' + e.message); }
+  try { renderRoadList(); } catch (e) { console.error('renderRoadList 失败:', e); }
+  try { initPieChart(); } catch (e) { console.error('initPieChart 失败:', e); }
+  // 恢复后重新选中之前选中的道路
+  try {
+    const data = JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}');
+    if (data.currentRoadName && roads.find(r=>r.name===data.currentRoadName)) selectRoad(data.currentRoadName);
+    else if (roads.length) selectRoad(roads[0].name);
+  } catch(e) {}
+
+  // 显示协作状态提示
+  _showCollabStatus(loaded);
+};
+
+// 在页面底部显示当前数据来源/协作状态
+function _showCollabStatus(fromServer) {
+  const tag = document.createElement('div');
+  tag.id = 'collab-status';
+  tag.style.cssText = 'position:fixed;bottom:8px;right:8px;z-index:9999;font-size:11px;padding:4px 10px;border-radius:6px;' +
+    (fromServer
+      ? 'background:#dcfce7;color:#166534;border:1px solid #86efac;'
+      : 'background:#fef3c7;color:#92400e;border:1px solid #fcd34d;');
+  tag.innerHTML = fromServer
+    ? '<iconify-icon icon="mdi:cloud-check" style="vertical-align:middle"></iconify-icon> 多人协作模式 — 数据已从服务端同步'
+    : '<iconify-icon icon="mdi:database" style="vertical-align:middle"></iconify-icon> 本地模式 — 数据保存在浏览器中';
+  document.body.appendChild(tag);
+  // 5秒后自动淡出
+  setTimeout(() => { if (tag.parentNode) { tag.style.transition = 'opacity 1s'; tag.style.opacity = '0'; setTimeout(() => tag.remove(), 1000); } }, 5000);
+}
+</script>
+<!-- ===== 巡检报告弹窗 ===== -->
+<div id="report-modal" class="fixed inset-0 z-[9999] hidden">
+  <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeReportModal()"></div>
+  <div class="absolute inset-4 md:inset-8 lg:inset-12 bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+    <!-- 报告头部 -->
+    <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0 bg-gradient-to-r from-blue-900 to-blue-700">
+      <div class="flex items-center space-x-3">
+        <iconify-icon icon="mdi:clipboard-text-clock-outline" class="text-2xl text-white"></iconify-icon>
+        <div>
+          <h2 class="text-lg font-bold text-white" id="report-title">道路巡检报告</h2>
+          <p class="text-xs text-blue-200" id="report-subtitle">—</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-3">
+        <button onclick="copyReportContent()" class="flex items-center space-x-1.5 bg-white/20 hover:bg-white/30 text-white text-sm px-3 py-1.5 rounded-lg transition-colors">
+          <iconify-icon icon="mdi:content-copy" class="text-base"></iconify-icon>
+          <span>复制报告</span>
+        </button>
+        <button onclick="printReport()" class="flex items-center space-x-1.5 bg-white/20 hover:bg-white/30 text-white text-sm px-3 py-1.5 rounded-lg transition-colors">
+          <iconify-icon icon="mdi:printer" class="text-base"></iconify-icon>
+          <span>打印</span>
+        </button>
+        <button onclick="closeReportModal()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20 text-white transition-colors">
+          <iconify-icon icon="mdi:close" class="text-xl"></iconify-icon>
+        </button>
+      </div>
+    </div>
+    <!-- 报告正文 -->
+    <div class="flex-1 overflow-y-auto custom-scrollbar p-6" id="report-body">
+      <!-- 动态生成内容 -->
+    </div>
+    <!-- 底部状态栏 -->
+    <div class="px-6 py-3 border-t border-slate-200 flex items-center justify-between bg-slate-50 shrink-0">
+      <p class="text-xs text-slate-400" id="report-footer-note">武汉市道路病害智能监测平台自动生成</p>
+      <p class="text-xs text-slate-400" id="copy-feedback" class="hidden"></p>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
