@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# 数据文件（运行时生成，不上传）
+roads.db
+roads_data.json
+
+# 测试/验证脚本（仅本地开发用）
+_check.js
+verify_*.js
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# IDE / Editor
+.vscode/
+.idea/
+
+# WorkBuddy 内部
+.workbuddy/
