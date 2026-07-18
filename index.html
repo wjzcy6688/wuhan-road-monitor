@@ -41,14 +41,15 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Robo
 </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
-<header class="h-16 bg-gov-dark flex items-center justify-between px-6 text-white shrink-0 z-20 shadow-lg">
-<div class="flex items-center space-x-3">
-<div class="bg-white p-1 rounded-full">
+<header class="h-14 md:h-16 bg-gov-dark flex items-center justify-between px-3 md:px-6 text-white shrink-0 z-40 shadow-lg">
+<div class="flex items-center space-x-2 md:space-x-3 min-w-0">
+<button onclick="toggleSidebar()" class="md:hidden p-2 -ml-2 rounded-lg hover:bg-white/10 shrink-0" title="菜单"><iconify-icon class="text-2xl" icon="mdi:menu"></iconify-icon></button>
+<div class="bg-white p-1 rounded-full hidden md:block shrink-0">
 <iconify-icon class="text-gov-dark text-2xl" icon="mdi:road-variant"></iconify-icon>
 </div>
-<h1 class="text-xl font-bold tracking-wider">武汉市道路病害智能监测平台</h1>
+<h1 class="text-base md:text-xl font-bold tracking-wider truncate">武汉市道路病害智能监测平台</h1>
 </div>
-<div class="flex items-center space-x-6">
+<div class="hidden md:flex items-center space-x-6 shrink-0">
 <div class="flex items-center space-x-2 bg-blue-900/40 px-3 py-1 rounded-full text-sm">
 <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span><span>系统运行正常</span>
 </div>
@@ -60,8 +61,9 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Robo
 </div>
 </div>
 </header>
-<div class="flex flex-1 overflow-hidden">
-<aside class="w-64 bg-slate-800 text-slate-300 flex flex-col shrink-0">
+<div id="sidebar-backdrop" class="fixed inset-0 bg-black/40 z-30 hidden md:hidden" onclick="toggleSidebar()"></div>
+<div class="flex flex-1 overflow-hidden flex-col md:flex-row">
+<aside id="sidebar" class="w-64 bg-slate-800 text-slate-300 flex flex-col shrink-0 fixed top-14 bottom-0 left-0 z-30 -translate-x-full md:static md:top-auto md:bottom-auto md:left-auto md:translate-x-0 transition-transform duration-300">
 <nav class="flex-1 py-4 overflow-y-auto custom-scrollbar">
 <div class="px-4 mb-2 text-xs font-bold text-slate-500 uppercase tracking-widest">核心业务</div>
 <a class="flex items-center space-x-3 px-6 py-3 bg-gov-dark text-white border-r-4 border-blue-400" href="#">
@@ -116,30 +118,30 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Robo
 <div class="absolute -top-5 left-1/2 -translate-x-1/2 z-20 cursor-pointer bg-white border border-slate-300 rounded-full w-10 h-10 flex items-center justify-center shadow-md hover:bg-slate-50 transition-colors" onclick="togglePanel()" id="panel-toggle" title="切换面板">
 <iconify-icon icon="mdi:chevron-down" class="text-slate-500 text-xl transition-transform duration-300" id="panel-toggle-icon"></iconify-icon>
 </div>
-<div class="px-6 py-3 border-b flex items-center justify-between shrink-0">
-<div class="flex items-center space-x-4">
-<h2 class="text-xl font-bold text-gov-dark" id="current-road-title">珞喻路</h2>
-<span class="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full font-medium" id="road-id-tag">ID: WH-RD-001</span>
-<button type="button" onclick="editCurrentRoad()" class="ml-1 text-xs bg-blue-600 text-white px-2.5 py-1 rounded hover:bg-blue-700 flex items-center"><iconify-icon icon="mdi:pencil" class="mr-1"></iconify-icon>修改</button>
-<button type="button" onclick="resetCurrentRoad()" class="text-xs bg-slate-500 text-white px-2.5 py-1 rounded hover:bg-slate-600 flex items-center"><iconify-icon icon="mdi:restore" class="mr-1"></iconify-icon>重置</button>
+<div class="px-3 md:px-6 py-2 md:py-3 border-b flex flex-col md:flex-row md:items-center gap-2 md:gap-0 shrink-0">
+<div class="flex items-center space-x-2 md:space-x-4 min-w-0">
+<h2 class="text-lg md:text-xl font-bold text-gov-dark truncate" id="current-road-title">珞喻路</h2>
+<span class="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full font-medium shrink-0" id="road-id-tag">ID: WH-RD-001</span>
+<button type="button" onclick="editCurrentRoad()" class="ml-1 text-[11px] md:text-xs bg-blue-600 text-white px-2 md:px-2.5 py-1 rounded hover:bg-blue-700 flex items-center shrink-0"><iconify-icon icon="mdi:pencil" class="mr-1"></iconify-icon>修改</button>
+<button type="button" onclick="resetCurrentRoad()" class="text-[11px] md:text-xs bg-slate-500 text-white px-2 md:px-2.5 py-1 rounded hover:bg-slate-600 flex items-center shrink-0"><iconify-icon icon="mdi:restore" class="mr-1"></iconify-icon>重置</button>
 </div>
-<div class="flex space-x-1 bg-slate-100 p-1 rounded-lg">
-<button class="px-4 py-1.5 text-sm rounded-md transition-all tab-active" id="tab-btn-1" onclick="switchTab(1)">病害类型与比例</button>
-<button class="px-4 py-1.5 text-sm rounded-md transition-all text-slate-500 hover:text-gov-dark" id="tab-btn-2" onclick="switchTab(2)">AI 推测原因分析</button>
-<button class="px-4 py-1.5 text-sm rounded-md transition-all text-slate-500 hover:text-gov-dark" id="tab-btn-3" onclick="switchTab(3)">最小交通影响维修方案</button>
+<div class="flex space-x-1 bg-slate-100 p-1 rounded-lg overflow-x-auto shrink-0 w-full md:w-auto">
+<button class="whitespace-nowrap px-3 md:px-4 py-1.5 text-xs md:text-sm rounded-md transition-all tab-active" id="tab-btn-1" onclick="switchTab(1)">病害类型与比例</button>
+<button class="whitespace-nowrap px-3 md:px-4 py-1.5 text-xs md:text-sm rounded-md transition-all text-slate-500 hover:text-gov-dark" id="tab-btn-2" onclick="switchTab(2)">AI 推测原因分析</button>
+<button class="whitespace-nowrap px-3 md:px-4 py-1.5 text-xs md:text-sm rounded-md transition-all text-slate-500 hover:text-gov-dark" id="tab-btn-3" onclick="switchTab(3)">最小交通影响维修方案</button>
 </div>
 </div>
-<div class="flex-1 overflow-y-auto custom-scrollbar p-6">
-<div class="h-full flex space-x-6" id="tab-content-1">
-<div class="w-1/3 h-full bg-slate-50 rounded-xl border border-slate-200 p-4 relative">
+<div class="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6">
+<div class="h-full flex flex-col md:flex-row md:space-x-6 space-y-4 md:space-y-0" id="tab-content-1">
+<div class="w-full md:w-1/3 h-64 md:h-full bg-slate-50 rounded-xl border border-slate-200 p-4 relative shrink-0">
 <div class="absolute top-4 left-4 text-sm font-bold text-slate-600 flex items-center">
 <iconify-icon class="mr-1" icon="mdi:chart-pie"></iconify-icon> 病害构成分布
 </div>
 <div class="w-full h-full" id="disease-pie-chart"></div>
 </div>
-<div class="w-2/3 flex flex-col space-y-4">
-<div class="grid grid-cols-4 gap-4" id="disease-cards"></div>
-<div class="flex-1 bg-gov-dark/5 rounded-xl border border-gov-dark/10 p-4 flex items-center justify-around">
+<div class="w-full md:w-2/3 flex flex-col space-y-4">
+<div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4" id="disease-cards"></div>
+<div class="flex-1 bg-gov-dark/5 rounded-xl border border-gov-dark/10 p-4 flex flex-wrap items-center justify-around gap-3 md:gap-0">
 <div class="text-center"><p class="text-slate-500 text-sm mb-1">健康评分 (PCI)</p><p class="text-4xl font-bold text-gov-dark" id="stat-pci">92</p></div>
 <div class="w-px h-12 bg-slate-300"></div>
 <div class="text-center"><p class="text-slate-500 text-sm mb-1">风险等级</p><p class="text-lg font-bold px-4 py-1 rounded-full" id="stat-risk">低风险</p></div>
@@ -158,7 +160,7 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Robo
 </div>
 </div>
 <div class="hidden h-full flex flex-col space-y-6 overflow-y-auto custom-scrollbar" id="tab-content-2">
-<div class="flex items-center justify-between">
+<div class="flex flex-col md:flex-row md:items-center gap-3 md:gap-0">
 <div class="flex items-center space-x-2 text-blue-700 bg-blue-50 px-4 py-2 rounded-lg border border-blue-100">
 <iconify-icon class="text-xl" icon="mdi:robot"></iconify-icon>
 <span class="font-bold">AI 智能诊断引擎 · 道路病害成因推测</span>
@@ -168,7 +170,7 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Robo
 </button>
 </div>
 <div id="deepseek-via" class="hidden text-[11px] text-slate-400"></div>
-<div class="grid grid-cols-2 gap-6" id="ai-analysis-container"></div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6" id="ai-analysis-container"></div>
 <div id="ai-conclusion" class="bg-gov-dark/5 border border-gov-dark/10 rounded-xl p-4 hidden">
 <h4 class="font-bold text-gov-dark mb-2 flex items-center"><iconify-icon class="mr-2" icon="mdi:clipboard-text"></iconify-icon> 综合诊断结论</h4>
 <p id="ai-conclusion-text" class="text-sm text-slate-700 leading-relaxed"></p>
@@ -178,35 +180,43 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Robo
 <div class="flex flex-wrap gap-3" id="suggested-tests"></div>
 </div>
 </div>
-<div class="hidden h-full flex space-x-6" id="tab-content-3">
-<div class="w-1/2 flex flex-col space-y-4"><div class="space-y-4" id="maintenance-plan-list"></div></div>
-<div class="w-1/2 bg-slate-900 rounded-xl p-4 relative overflow-hidden flex flex-col">
+<div class="hidden h-full flex flex-col md:flex-row md:space-x-6 space-y-4 md:space-y-0" id="tab-content-3">
+<div class="w-full md:w-1/2 flex flex-col space-y-4 min-h-[220px] md:min-h-0">
+<div class="flex items-center justify-between shrink-0">
+<button id="traffic-analyze-btn" onclick="runTrafficAnalysis()" class="flex items-center space-x-2 bg-gov-dark text-white px-3 py-1.5 rounded-lg hover:bg-blue-900 transition-colors text-xs shrink-0">
+<iconify-icon icon="mdi:robot" class="text-base"></iconify-icon><span>AI 重新分析</span>
+</button>
+<span id="traffic-summary" class="text-[11px] text-slate-400 leading-snug flex-1 text-right pl-3"></span>
+</div>
+<div class="space-y-3 overflow-y-auto custom-scrollbar pr-1 flex-1 min-h-[200px] md:min-h-0" id="maintenance-plan-list"></div>
+</div>
+<div class="w-full md:w-1/2 bg-slate-900 rounded-xl p-4 relative overflow-hidden flex flex-col min-h-[260px] md:min-h-0">
 <div class="text-white font-bold mb-4 flex items-center justify-between">
 <span class="flex items-center"><iconify-icon class="mr-2 text-yellow-400" icon="mdi:map-marker-path"></iconify-icon> 临时交通疏解示意图</span>
 <span class="text-xs bg-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded border border-yellow-500/30">实时模拟</span>
 </div>
 <div class="flex-1 bg-slate-800 rounded-lg border border-slate-700 relative overflow-hidden flex items-center justify-center">
-<svg class="w-full h-full" viewBox="0 0 400 200">
+<svg class="w-full h-full" viewBox="0 0 400 200" id="tf-svg">
 <rect fill="#334155" height="60" width="400" x="0" y="70"></rect>
 <line stroke="#94a3b8" stroke-dasharray="10,10" x1="0" x2="400" y1="100" y2="100"></line>
-<rect fill="#ef4444" fill-opacity="0.3" height="20" stroke="#ef4444" stroke-width="1" width="100" x="150" y="75"></rect>
-<path d="M150,75 L250,95 M150,95 L250,75" stroke="#ef4444" stroke-width="0.5"></path>
-<path d="M50,115 Q100,115 130,95 T180,95" fill="none" marker-end="url(#arrow)" stroke="#22c55e" stroke-width="2"></path>
-<circle cx="140" cy="75" fill="#f59e0b" r="3"></circle>
-<circle cx="260" cy="75" fill="#f59e0b" r="3"></circle>
+<rect id="tf-workzone" fill="#ef4444" fill-opacity="0.3" height="20" stroke="#ef4444" stroke-width="1" width="100" x="150" y="75"></rect>
+<path id="tf-cross" d="M150,75 L250,95 M150,95 L250,75" stroke="#ef4444" stroke-width="0.5"></path>
+<path id="tf-detour" d="M50,115 Q100,115 130,95 T180,95" fill="none" marker-end="url(#tf-arrow)" stroke="#22c55e" stroke-width="2"></path>
+<circle id="tf-cone-a" cx="140" cy="75" fill="#f59e0b" r="3"></circle>
+<circle id="tf-cone-b" cx="260" cy="75" fill="#f59e0b" r="3"></circle>
 <text fill="#94a3b8" font-size="8" x="10" y="85">西行线</text>
 <text fill="#94a3b8" font-size="8" x="10" y="125">东行线</text>
-<text fill="#ef4444" font-size="8" font-weight="bold" x="175" y="90">施工区域</text>
-<defs><marker id="arrow" markerHeight="4" markerWidth="4" orient="auto-start-reverse" refX="5" refY="5" viewBox="0 0 10 10"><path d="M 0 0 L 10 5 L 0 10 z" fill="#22c55e"></path></marker></defs>
+<text id="tf-workzone-text" fill="#ef4444" font-size="8" font-weight="bold" x="175" y="90">施工区域</text>
+<defs><marker id="tf-arrow" markerHeight="4" markerWidth="4" orient="auto-start-reverse" refX="5" refY="5" viewBox="0 0 10 10"><path d="M 0 0 L 10 5 L 0 10 z" fill="#22c55e"></path></marker></defs>
 </svg>
 <div class="absolute bottom-2 right-2 flex space-x-2">
-<div class="flex items-center space-x-1 text-[10px] text-slate-400"><span class="w-2 h-2 bg-red-500 rounded-full"></span><span>封闭区</span></div>
+<div class="flex items-center space-x-1 text-[10px] text-slate-400"><span class="w-2 h-2 bg-red-500 rounded-full"></span><span>封闭/占道区</span></div>
 <div class="flex items-center space-x-1 text-[10px] text-slate-400"><span class="w-2 h-2 bg-green-500 rounded-full"></span><span>引导路径</span></div>
 </div>
 </div>
 <div class="mt-4 grid grid-cols-2 gap-2">
-<div class="bg-slate-800 p-2 rounded border border-slate-700"><p class="text-slate-500 text-[10px] uppercase">建议施工时段</p><p class="text-white text-sm">22:00 - 次日 06:00</p></div>
-<div class="bg-slate-800 p-2 rounded border border-slate-700"><p class="text-slate-500 text-[10px] uppercase">交通影响等级</p><p class="text-yellow-500 text-sm font-bold">中等影响 (Level 2)</p></div>
+<div class="bg-slate-800 p-2 rounded border border-slate-700"><p class="text-slate-500 text-[10px] uppercase">建议施工时段</p><p id="tf-time" class="text-white text-sm">22:00 - 次日 06:00</p></div>
+<div class="bg-slate-800 p-2 rounded border border-slate-700"><p class="text-slate-500 text-[10px] uppercase">交通影响等级</p><p id="tf-level" class="text-yellow-500 text-sm font-bold">中等影响</p></div>
 </div>
 </div>
 </div>
@@ -217,7 +227,7 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Robo
 
 <!-- ===== 新增道路录入弹窗 ===== -->
 <div id="road-modal" class="modal-overlay hidden">
-  <div class="bg-white rounded-2xl shadow-2xl w-[480px] max-h-[92vh] flex flex-col">
+  <div class="bg-white rounded-2xl shadow-2xl w-[95vw] max-w-[480px] max-h-[92vh] flex flex-col">
     <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
       <h3 id="modal-title" class="text-lg font-bold text-gov-dark flex items-center"><iconify-icon icon="mdi:road-plus" class="mr-2 text-xl"></iconify-icon> 新增道路病害数据</h3>
       <button onclick="closeRoadModal()" class="text-slate-400 hover:text-slate-700 transition-colors"><iconify-icon icon="mdi:close" class="text-2xl"></iconify-icon></button>
@@ -768,6 +778,7 @@ function getPciColor(pci, type) {
 
 function selectRoad(name) {
   if (pickActive) return;
+  if (window.innerWidth < 768) closeSidebar();
   if (currentRoad) {
     const el = document.getElementById(`list-item-${currentRoad.name}`);
     if (el) el.classList.remove('bg-slate-700','text-white');
@@ -788,6 +799,8 @@ function selectRoad(name) {
   risk.innerText = currentRoad.risk;
   risk.className = `text-lg font-bold px-4 py-1 rounded-full ${currentRoad.pci < 60 ? 'bg-red-100 text-red-700' : currentRoad.pci < 75 ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'}`;
   updateCharts(); updateDiseaseCards(); updateAiAnalysis(); updateMaintenancePlans();
+  // 若当前正停在选项卡3 且本路无缓存方案, 切换道路时立即重新分析
+  if (currentTab === 3 && (!currentRoad.trafficPlans || !currentRoad.trafficPlans.length)) runTrafficAnalysis();
   const pts = currentRoad.coords.map(c => { const b = wgs84ToBd09(c[0], c[1]); return new BMap.Point(b.lng, b.lat); });
   const view = map.getViewport(pts);
   map.centerAndZoom(view.center, Math.max(view.zoom, 14));
@@ -841,16 +854,230 @@ function updateAiAnalysis() {
   document.getElementById('suggested-tests').innerHTML = ['探地雷达检测','钻芯取样','弯沉测试','平整度扫描'].map(t=>`<span class="px-3 py-1 bg-white border border-slate-300 rounded-full text-xs text-slate-600 flex items-center"><iconify-icon icon="mdi:check-circle" class="mr-1 text-green-500"></iconify-icon> ${t}</span>`).join('');
 }
 
-function updateMaintenancePlans() {
-  document.getElementById('maintenance-plan-list').innerHTML = maintenancePlans.map((p,i)=>`<div class="p-4 rounded-xl border transition-all cursor-pointer ${i===0?'bg-blue-50 border-blue-200':'bg-white border-slate-200 opacity-70'}"><div class="flex justify-between items-start mb-2"><h4 class="font-bold text-gov-dark">${p.name}</h4><span class="text-[10px] px-2 py-0.5 rounded-full ${p.impact==='低'?'bg-green-100 text-green-700':'bg-yellow-100 text-yellow-700'}">${p.impact}交通影响</span></div><div class="flex space-x-4 mb-3 text-xs text-slate-500"><span class="flex items-center"><iconify-icon icon="mdi:clock-outline" class="mr-1"></iconify-icon> 工期: ${p.duration}</span><span class="flex items-center"><iconify-icon icon="mdi:tools" class="mr-1"></iconify-icon> 步骤: ${p.steps.length}步</span></div><div class="flex flex-wrap gap-1">${p.materials.map(m=>`<span class="text-[9px] bg-slate-200 px-1.5 py-0.5 rounded">${m}</span>`).join('')}</div></div>`).join('');
+
+// ===== 最小交通影响维修方案 (AI 动态生成) =====
+// 说明: 分数 impactScore 为 1-5 整数, 分数越低对交通影响越大
+//   1 = 完全中断交通 / 2 = 严重影响(多车道封闭) / 3 = 中等(半幅封闭)
+//   4 = 轻微(局部短时占道) / 5 = 极低(夜间快速施工, 几乎无感)
+const TF_SCORE_COLOR = {1:'#ef4444',2:'#f97316',3:'#eab308',4:'#84cc16',5:'#22c55e'};
+const TF_SCORE_LEVEL = {1:'极高影响 (完全中断)',2:'严重影响',3:'中等影响 (半幅封闭)',4:'轻微影响',5:'极低影响'};
+
+// 根据道路名称/长度/PCI 粗略推断其在路网中的等级(用于让 AI 结合路网疏解能力分析)
+function inferRoadClass(road) {
+  const name = (road.name || '').toLowerCase();
+  if (/高速|快速|高架|环线|主干|大道|迎宾|世纪大道/.test(name)) return '城市主干路（路网骨架，中断后绕行成本高）';
+  if (/次干|大街|中路/.test(name)) return '城市次干路（可承担一定分流）';
+  if (road.length && road.length > 2000) return '较长道路（可能为区域主要通道）';
+  return '城市支路（路网末端，影响范围较小）';
 }
 
+// 构建交通影响维修方案的 AI 提示词
+function buildTrafficMessages(road) {
+  let segInfo = '';
+  if (road.segData && road.segData.length) {
+    const sorted = [...road.segData].sort((a, b) => a.pci - b.pci);
+    const severe = sorted.slice(0, Math.min(3, sorted.length));
+    segInfo = '\n分段检测结果（按里程）：共 ' + road.segData.length + ' 段，最严重的几段为：\n' +
+      severe.map(s => `K${(s.startM/1000).toFixed(2)}~K${(s.endM/1000).toFixed(2)}  PCI=${s.pci}（裂缝${s.diseases.cracks}/坑槽${s.diseases.potholes}/车辙${s.diseases.rutting}/沉陷${s.diseases.subsidence}/其他${s.diseases.others}）`).join('\n');
+  }
+  const roadClass = inferRoadClass(road);
+  const prompt = `你是道路养护施工组织与交通工程专家，熟悉《城市道路养护维修作业规程》《公路养护安全作业规程》(JTG H30) 及交通影响评价方法。
+请基于路网条件、病害分布与工期要求，为以下道路综合提出「对交通影响最小」的维修施工组织方案。
+
+道路：${road.name}（${road.id}）
+PCI 健康评分：${road.pci}
+风险等级：${road.risk}
+待修复面积：${road.area} m²
+道路长度：${road.length != null ? road.length + ' m' : '未知'}
+病害构成比例——裂缝 ${road.diseases.cracks}%、坑槽 ${road.diseases.potholes}%、车辙 ${road.diseases.rutting}%、沉陷 ${road.diseases.subsidence}%、其他 ${road.diseases.others}%
+路网背景：${roadClass}
+${segInfo}
+
+要求：
+1. 提出 3-4 个差异化施工组织方案，必须结合路网疏解能力给出「对交通影响最小」的推荐方向（例如：半幅分段施工、夜间全封闭铣刨、日间局部占道快修、周末集中施工等）。
+2. 每个方案给出交通影响分数 impactScore（整数 1-5，约定：1=完全中断交通，2=严重影响/多车道封闭，3=中等影响/半幅封闭，4=轻微影响/局部短时占道，5=极低影响/夜间快速施工几乎无感）。分数越低对交通影响越大。
+3. 同时给出 impact（影响等级文字：极低/低/中/高/极高，与分数对应）、duration（工期）、steps（施工步骤数组）、materials（材料设备数组）、trafficMeasure（交通疏解措施，含建议施工时段）、reason（选择此方案以最小化交通影响的理由，一段话）、recommended（布尔，是否综合最优：对交通影响最小且技术可行）。
+4. 综合推荐其中一个方案，给出 recommended_plan_index（0-based 索引），以及 summary（总体结论一段话）。
+
+请严格只返回如下 JSON（不要使用 markdown 代码块、不要额外说明文字）：
+{"plans":[{"name":"方案名","impactScore":3,"impact":"中","duration":"工期描述","steps":["步骤1"],"materials":["材料/设备"],"trafficMeasure":"交通疏解措施","reason":"理由","recommended":false},...],"recommended_plan_index":0,"summary":"总体结论"}`;
+  return [
+    { role: 'system', content: '你是道路养护施工组织与交通影响评价专家，必须且只返回合法 JSON，不要任何解释。' },
+    { role: 'user', content: prompt }
+  ];
+}
+
+// 容错解析 AI 返回的交通方案(字段别名兼容 + 分数 clamp 1-5)
+function normalizeTrafficPlans(j) {
+  let arr = j.plans || j.traffic_plans || j.schemes || j.options || j.scenarios || (Array.isArray(j) ? j : null);
+  if (!arr || !Array.isArray(arr)) return [];
+  const out = [];
+  for (const p of arr) {
+    if (!p || typeof p !== 'object') continue;
+    const name = p.name || p.plan_name || p.scheme || p.title || '未命名方案';
+    let score = parseInt(p.impactScore ?? p.impact_score ?? p.score ?? p.traffic_score ?? 3, 10);
+    if (isNaN(score)) score = 3;
+    score = Math.max(1, Math.min(5, score));
+    let impact = p.impact ?? p.impact_level ?? p.level;
+    if (!impact || typeof impact !== 'string') impact = TF_SCORE_LEVEL[score].split(' ')[0];
+    const duration = String(p.duration ?? p.time ?? p.工期 ?? '—');
+    const steps = Array.isArray(p.steps) ? p.steps.map(String) : (typeof p.steps === 'string' ? [p.steps] : []);
+    const materials = Array.isArray(p.materials) ? p.materials.map(String)
+      : Array.isArray(p.equipment) ? p.equipment.map(String)
+      : (typeof p.materials === 'string' ? [p.materials] : []);
+    const trafficMeasure = String(p.trafficMeasure ?? p.traffic_measure ?? p.measure ?? '');
+    const reason = String(p.reason ?? p.rationale ?? '');
+    const recommended = !!(p.recommended ?? p.is_recommended ?? p.isRecommended);
+    out.push({ name, impactScore: score, impact, duration, steps, materials, trafficMeasure, reason, recommended });
+  }
+  out.sort((a, b) => b.impactScore - a.impactScore);
+  return out;
+}
+
+// 运行 AI 交通影响分析
+async function runTrafficAnalysis() {
+  if (!currentRoad) return;
+  const list = document.getElementById('maintenance-plan-list');
+  const btn = document.getElementById('traffic-analyze-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<iconify-icon icon="mdi:loading" class="text-base spin"></iconify-icon><span>分析中…</span>'; }
+  list.innerHTML = `<div class="flex items-center justify-center gap-2 p-6 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-xl"><iconify-icon icon="mdi:loading" class="spin"></iconify-icon> AI 正在根据路网情况生成交通影响最小的维修方案…</div>`;
+  const summaryEl = document.getElementById('traffic-summary');
+  if (summaryEl) summaryEl.innerText = '';
+  try {
+    const messages = buildTrafficMessages(currentRoad);
+    const parsed = await callDeepSeekJSON(messages);
+    const plans = normalizeTrafficPlans(parsed);
+    if (!plans.length) throw new Error('AI 未返回有效方案');
+    let recIdx = plans.findIndex(p => p.recommended);
+    if (recIdx < 0) recIdx = 0;
+    plans[recIdx].recommended = true;
+    currentRoad.trafficPlans = plans;
+    if (parsed && parsed.summary) currentRoad.trafficSummary = String(parsed.summary);
+    renderTrafficPlans(plans, recIdx);
+    if (summaryEl && currentRoad.trafficSummary) summaryEl.innerText = currentRoad.trafficSummary;
+    saveRoadsData();
+  } catch (e) {
+    const fb = maintenancePlans.map(p => ({
+      name: p.name, impactScore: p.impact === '低' ? 4 : 3, impact: p.impact,
+      duration: p.duration, steps: p.steps, materials: p.materials,
+      trafficMeasure: '按常规养护作业控制区布置，做好警示标志', reason: '通用方案（AI 不可达时兜底）', recommended: false
+    }));
+    fb.sort((a, b) => b.impactScore - a.impactScore);
+    fb[0].recommended = true;
+    currentRoad.trafficPlans = fb;
+    renderTrafficPlans(fb, 0);
+    if (summaryEl) summaryEl.innerText = '⚠️ AI 分析失败，已显示通用方案：' + (e.message || '');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<iconify-icon icon="mdi:robot" class="text-base"></iconify-icon><span>AI 重新分析</span>'; }
+  }
+}
+
+// 渲染左侧方案列表
+function renderTrafficPlans(plans, selIdx) {
+  const list = document.getElementById('maintenance-plan-list');
+  if (!selIdx || selIdx < 0) selIdx = Math.max(0, plans.findIndex(p => p.recommended));
+  if (selIdx < 0) selIdx = 0;
+  list.innerHTML = plans.map((p, i) => {
+    const color = TF_SCORE_COLOR[p.impactScore] || '#eab308';
+    const selected = i === selIdx;
+    const lvlCls = (p.impact === '极低' || p.impact === '低') ? 'bg-green-100 text-green-700'
+      : (p.impact === '中' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700');
+    return `<div class="p-3.5 rounded-xl border transition-all cursor-pointer ${selected ? 'bg-blue-50 border-blue-300 shadow-sm' : 'bg-white border-slate-200 hover:border-blue-200'}" onclick="selectTrafficPlan(${i})" data-tf-idx="${i}">
+      <div class="flex justify-between items-start mb-1.5">
+        <h4 class="font-bold text-gov-dark text-sm flex items-center gap-1">${p.recommended ? '<iconify-icon icon="mdi:star" class="text-amber-500"></iconify-icon>' : ''}${escapeHtml(p.name)}</h4>
+        ${p.recommended ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 shrink-0">推荐</span>' : ''}
+      </div>
+      <div class="flex items-center gap-1.5 mb-1.5 flex-wrap">
+        <span class="text-[11px] font-bold px-2 py-0.5 rounded" style="background:${color}22;color:${color}">影响分数 ${p.impactScore}/5</span>
+        <span class="text-[10px] px-2 py-0.5 rounded-full ${lvlCls}">${escapeHtml(p.impact)}交通影响</span>
+      </div>
+      <div class="flex items-center gap-3 mb-1.5 text-[11px] text-slate-500">
+        <span class="flex items-center"><iconify-icon icon="mdi:clock-outline" class="mr-0.5"></iconify-icon>${escapeHtml(p.duration)}</span>
+        <span class="flex items-center"><iconify-icon icon="mdi:tools" class="mr-0.5"></iconify-icon>${p.steps.length}步</span>
+      </div>
+      ${p.trafficMeasure ? `<div class="text-[11px] text-slate-600 mb-1"><iconify-icon icon="mdi:traffic-cone" class="mr-0.5"></iconify-icon>${escapeHtml(p.trafficMeasure)}</div>` : ''}
+      ${p.reason ? `<p class="text-[11px] text-slate-400 leading-snug">${escapeHtml(p.reason)}</p>` : ''}
+    </div>`;
+  }).join('');
+  selectTrafficPlan(selIdx, true);
+}
+
+// 选中某个方案 → 更新左侧高亮 + 右侧示意图
+function selectTrafficPlan(idx, skipRender) {
+  const plans = (currentRoad && currentRoad.trafficPlans) || [];
+  if (!plans[idx]) return;
+  if (!skipRender) { renderTrafficPlans(plans, idx); return; }
+  const cards = document.querySelectorAll('#maintenance-plan-list > div[data-tf-idx]');
+  cards.forEach((c, i) => {
+    if (i === idx) c.className = 'p-3.5 rounded-xl border transition-all cursor-pointer bg-blue-50 border-blue-300 shadow-sm';
+    else c.className = 'p-3.5 rounded-xl border transition-all cursor-pointer bg-white border-slate-200 hover:border-blue-200';
+  });
+  updateTrafficDiagram(plans[idx]);
+}
+
+// 根据选中方案的分数, 动态更新右侧 SVG 交通示意图与信息面板
+function updateTrafficDiagram(plan) {
+  const score = plan.impactScore;
+  const color = TF_SCORE_COLOR[score] || '#eab308';
+  const wz = document.getElementById('tf-workzone');
+  const cross = document.getElementById('tf-cross');
+  const wzText = document.getElementById('tf-workzone-text');
+  const timeEl = document.getElementById('tf-time');
+  const levelEl = document.getElementById('tf-level');
+  let wzAttr, crossD, text, time, level;
+  if (score === 1) { wzAttr = { x:0, y:70, width:400, height:60, opacity:0.45 }; crossD = 'M0,70 L400,130 M0,130 L400,70'; text = '全幅封闭'; time = '需提前公告绕行'; level = TF_SCORE_LEVEL[1]; }
+  else if (score === 2) { wzAttr = { x:0, y:70, width:400, height:45, opacity:0.4 }; crossD = 'M0,70 L400,115 M0,115 L400,70'; text = '多车道封闭'; time = '夜间+交通管制'; level = TF_SCORE_LEVEL[2]; }
+  else if (score === 3) { wzAttr = { x:0, y:70, width:400, height:30, opacity:0.35 }; crossD = 'M0,70 L400,100 M0,100 L400,70'; text = '半幅封闭施工'; time = '夜间22:00-次日06:00'; level = TF_SCORE_LEVEL[3]; }
+  else if (score === 4) { wzAttr = { x:170, y:75, width:60, height:20, opacity:0.3 }; crossD = 'M170,75 L230,95 M170,95 L230,75'; text = '局部占道快修'; time = '22:00-次日06:00'; level = TF_SCORE_LEVEL[4]; }
+  else { wzAttr = { x:185, y:78, width:30, height:14, opacity:0.28 }; crossD = 'M185,78 L215,92 M185,92 L215,78'; text = '夜间快速施工'; time = '23:00-次日05:00'; level = TF_SCORE_LEVEL[5]; }
+  if (wz) {
+    for (const k in wzAttr) wz.setAttribute(k, wzAttr[k]);
+    wz.setAttribute('fill', color); wz.setAttribute('stroke', color); wz.setAttribute('fill-opacity', wzAttr.opacity);
+  }
+  if (cross) { cross.setAttribute('d', crossD); cross.setAttribute('stroke', color); }
+  if (wzText) { wzText.setAttribute('fill', color); wzText.setAttribute('x', String(Number(wzAttr.x) + Number(wzAttr.width) / 2 - 20)); wzText.textContent = text; }
+  const tm = (plan.trafficMeasure || '');
+  if (/夜间|22[:：]|23[:：]|0[0-9][:：]/.test(tm)) time = tm.length > 18 ? tm.slice(0, 18) + '…' : tm;
+  else if (/白天/.test(tm)) time = '白天分时施工';
+  else if (/周末/.test(tm)) time = '周末集中施工';
+  if (timeEl) timeEl.textContent = time;
+  if (levelEl) { levelEl.textContent = level; levelEl.style.color = color; }
+}
+
+// 面板刷新(被 selectRoad / updateMaintenancePlans 调用): 优先显示已缓存的 AI 方案
+function updateMaintenancePlans() {
+  const list = document.getElementById('maintenance-plan-list');
+  const summaryEl = document.getElementById('traffic-summary');
+  if (currentRoad && currentRoad.trafficPlans && currentRoad.trafficPlans.length) {
+    let recIdx = currentRoad.trafficPlans.findIndex(p => p.recommended);
+    if (recIdx < 0) recIdx = 0;
+    renderTrafficPlans(currentRoad.trafficPlans, recIdx);
+    if (summaryEl && currentRoad.trafficSummary) summaryEl.innerText = currentRoad.trafficSummary;
+  } else {
+    list.innerHTML = `<div class="p-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 text-center text-sm text-slate-400">切换到本选项卡后，将自动调用 AI 依据路网情况生成「最小交通影响维修方案」。<br/>也可点击右上角「AI 重新分析」手动触发。</div>`;
+    if (summaryEl) summaryEl.innerText = '';
+    resetTrafficDiagram();
+  }
+}
+
+// 右侧恢复默认示意
+function resetTrafficDiagram() {
+  updateTrafficDiagram({ impactScore: 3, trafficMeasure: '' });
+}
+
+
+let currentTab = 1;
 function switchTab(idx) {
+  currentTab = idx;
   for(let i=1;i<=3;i++){document.getElementById(`tab-content-${i}`).classList.add('hidden');document.getElementById(`tab-btn-${i}`).classList.remove('tab-active');document.getElementById(`tab-btn-${i}`).classList.add('text-slate-500');}
   document.getElementById(`tab-content-${idx}`).classList.remove('hidden');
   document.getElementById(`tab-btn-${idx}`).classList.add('tab-active');
   document.getElementById(`tab-btn-${idx}`).classList.remove('text-slate-500');
   if(idx===1&&pieChart) setTimeout(()=>pieChart.resize(),0);
+  // 切换到「最小交通影响维修方案」选项卡且本路无缓存方案时, 自动调用 AI 分析
+  if (idx === 3 && currentRoad && (!currentRoad.trafficPlans || !currentRoad.trafficPlans.length)) {
+    runTrafficAnalysis();
+  }
 }
 
 let panelVisible = true;
@@ -868,6 +1095,29 @@ function togglePanel() {
     mapSection.style.height = '100%';
     icon.classList.add('rotate-180');
   }
+}
+// 手机端侧边栏抽屉开合
+let sidebarOpen = false;
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  const bd = document.getElementById('sidebar-backdrop');
+  if (!sb) return;
+  sidebarOpen = !sidebarOpen;
+  if (sidebarOpen) {
+    sb.classList.remove('-translate-x-full'); sb.classList.add('translate-x-0');
+    if (bd) bd.classList.remove('hidden');
+  } else {
+    sb.classList.add('-translate-x-full'); sb.classList.remove('translate-x-0');
+    if (bd) bd.classList.add('hidden');
+  }
+}
+function closeSidebar() {
+  const sb = document.getElementById('sidebar');
+  const bd = document.getElementById('sidebar-backdrop');
+  if (sidebarOpen) toggleSidebar();
+  if (sb) { sb.classList.add('-translate-x-full'); sb.classList.remove('translate-x-0'); }
+  if (bd) bd.classList.add('hidden');
+  sidebarOpen = false;
 }
 function toggleMilestones() {
   showMilestones = !showMilestones;
@@ -1802,7 +2052,8 @@ function _cleanRoad(r) {
     id: r.id, name: r.name, pci: r.pci, coords: r.coords,
     diseases: r.diseases, segData: r.segData, risk: r.risk,
     area: r.area, length: r.length, isNew: !!r.isNew,
-    fromReport: !!r.fromReport, _original: r._original || null
+    fromReport: !!r.fromReport, _original: r._original || null,
+    trafficPlans: r.trafficPlans || null, trafficSummary: r.trafficSummary || ''
   };
 }
 
@@ -2205,14 +2456,14 @@ function _showCollabStatus(fromServer) {
           <p class="text-xs text-blue-200" id="report-subtitle">—</p>
         </div>
       </div>
-      <div class="flex items-center space-x-3">
-        <button onclick="copyReportContent()" class="flex items-center space-x-1.5 bg-white/20 hover:bg-white/30 text-white text-sm px-3 py-1.5 rounded-lg transition-colors">
+      <div class="flex items-center space-x-1 md:space-x-3 shrink-0">
+        <button onclick="copyReportContent()" class="flex items-center space-x-1.5 bg-white/20 hover:bg-white/30 text-white text-sm px-2 md:px-3 py-1.5 rounded-lg transition-colors shrink-0">
           <iconify-icon icon="mdi:content-copy" class="text-base"></iconify-icon>
-          <span>复制报告</span>
+          <span class="hidden sm:inline">复制报告</span>
         </button>
-        <button onclick="printReport()" class="flex items-center space-x-1.5 bg-white/20 hover:bg-white/30 text-white text-sm px-3 py-1.5 rounded-lg transition-colors">
+        <button onclick="printReport()" class="flex items-center space-x-1.5 bg-white/20 hover:bg-white/30 text-white text-sm px-2 md:px-3 py-1.5 rounded-lg transition-colors shrink-0">
           <iconify-icon icon="mdi:printer" class="text-base"></iconify-icon>
-          <span>打印</span>
+          <span class="hidden sm:inline">打印</span>
         </button>
         <button onclick="closeReportModal()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20 text-white transition-colors">
           <iconify-icon icon="mdi:close" class="text-xl"></iconify-icon>
